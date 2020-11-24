@@ -15,5 +15,6 @@ pub struct CentralDirectoryFileHeader {
     disk_number_start: u16,
     internal_file_attr: u16,
     external_file_attr: u16,
-    relative_offset: u32
+    relative_offset: u32,
+    file_name: String
 }
