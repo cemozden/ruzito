@@ -3,14 +3,15 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::io::Cursor;
 use super::eof_central_dir::*;
+use super::central_dir_file_header::CentralDirectoryFileHeader;
 use super::mem_map::END_OF_CENTRAL_DIR_SIGNATURE;
 
 pub struct ZipMetadataParser;
 
 impl ZipMetadataParser {
 
-    pub fn parse_eof_central_dir<P>(reader: P) -> Result<EndOfCentralDirectory, Error>
-    where P: Read + Seek {
+    pub fn parse_eof_central_dir<R>(reader: R) -> Result<EndOfCentralDirectory, Error>
+    where R: Read + Seek {
         let mut buf_reader = BufReader::new(reader);
 
         let mut buffer = vec![0; MIN_EOF_CENTRAL_DIRECTORY_SIZE];
@@ -21,6 +22,14 @@ impl ZipMetadataParser {
         println!("{:?}", buffer);
         Ok(EndOfCentralDirectory::from_bytes(&buffer))
     }
+    
+    pub fn parse_central_dir_headers<R>(reader: R, start_offset: u32) -> Vec<CentralDirectoryFileHeader> 
+    where R: Read + Seek {
+        //TODO: Implement this
+        vec![]
+    }
+
+
 }
 
 #[cfg(test)]
