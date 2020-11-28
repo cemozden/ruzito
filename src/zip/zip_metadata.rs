@@ -1,12 +1,12 @@
 use std::io::{Error, SeekFrom};
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::io::Cursor;
 use super::eof_central_dir::*;
 use super::central_dir_file_header::CentralDirectoryFileHeader;
-use super::mem_map::END_OF_CENTRAL_DIR_SIGNATURE;
 
 pub struct ZipMetadataParser;
+
+type CentralDirectories = Vec<CentralDirectoryFileHeader>;
 
 impl ZipMetadataParser {
 
@@ -23,10 +23,17 @@ impl ZipMetadataParser {
         Ok(EndOfCentralDirectory::from_bytes(&buffer))
     }
     
-    pub fn parse_central_dir_headers<R>(reader: R, start_offset: u32) -> Vec<CentralDirectoryFileHeader> 
+    pub fn parse_central_dir_headers<R>(reader: &mut R, start_offset: u64, size: u32) -> Result<CentralDirectories, Error>
     where R: Read + Seek {
-        //TODO: Implement this
-        vec![]
+        reader.seek(SeekFrom::Start(start_offset))?;
+        let mut central_directories: CentralDirectories = Vec::with_capacity(size as usize);
+        
+        for _ in 0..size as usize {
+            //TODO: Control Result enum handle error
+            central_directories.push(CentralDirectoryFileHeader::from_reader(reader).unwrap());
+        }
+
+        Ok(central_directories)
     }
 
 
@@ -35,6 +42,8 @@ impl ZipMetadataParser {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
+    use super::super::mem_map::END_OF_CENTRAL_DIR_SIGNATURE;
 
     #[test]
     fn test_values_are_as_expected() {
