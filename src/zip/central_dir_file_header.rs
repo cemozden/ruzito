@@ -34,17 +34,11 @@ impl CentralDirectoryFileHeader {
     pub fn from_reader<R>(reader: &mut R) -> Result<Self, Error>
     where R: Read + Seek {
         
-        let mut signature_bytes = vec![0; 4];
-        reader.read_exact(&mut signature_bytes)?;
-        let reader_signature = LittleEndian::read_u32(&signature_bytes);
-
-        assert!(reader_signature == CENTRAL_DIR_SIGNATURE);
-        reader.seek(SeekFrom::Current(-4))?;
-
-
         let mut cdf_bytes = vec![0; MIN_CENTRAL_DIRECTORY_SIZE];
-        println!("{:?}", reader.seek(SeekFrom::Current(0)).unwrap());
         reader.read_exact(&mut cdf_bytes)?;
+
+        let reader_signature = LittleEndian::read_u32(&cdf_bytes[0..4]);
+        assert!(reader_signature == CENTRAL_DIR_SIGNATURE);
         
         let file_name_length = LittleEndian::read_u16(&cdf_bytes[28..30]);
         let mut file_name_bytes: Vec<u8> = vec![0; file_name_length as usize];
@@ -54,7 +48,6 @@ impl CentralDirectoryFileHeader {
         let file_comment_length = LittleEndian::read_u16(&cdf_bytes[32..34]);
         let mut file_comment_bytes: Vec<u8> = vec![0; file_comment_length as usize];
 
-        println!("{:?}", reader.seek(SeekFrom::Current(0)).unwrap());
         reader.read_exact(&mut file_name_bytes)?;
         reader.seek(SeekFrom::Current(extra_field_length as i64))?;
         reader.read_exact(&mut file_comment_bytes)?;
@@ -82,25 +75,57 @@ impl CentralDirectoryFileHeader {
         })
     }
 
+    pub fn host_os(&self) -> &HostOS {
+        &self.host_os
+    }
+
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::prelude::*;
-    use super::super::eof_central_dir;
-    use super::super::zip_metadata;
-    use std::fs::File;
-    use std::io::BufReader;
+    use std::io::Cursor;
+    
+    #[test]
+    #[should_panic]
+    fn test_is_signature_valid() {
+        let bytes = vec![0x50, 0x4B, 0x00, 0x00, 0x3F, 0x00, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00, 0x10, 0x64, 0x5C, 0x50, 0xC1, 0x5C, 0xE7, 0x5E, 0x9C, 0xEC, 0x31, 0x00, 0x39,
+        0x6B, 0x33, 0x00, 0x0C, 0x00, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x78, 0x44, 0x53, 0x65, 0x74, 0x75, 0x70,
+        0x2E, 0x65, 0x78, 0x65, 0x0A, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x18, 0x00, 0x2A, 0xCD, 0x6B, 0xC3, 0x2A, 0xEE, 0xD5, 0x01, 0xAB, 0xC4, 0xEA, 0x9C, 0x2A,
+        0xEE, 0xD5, 0x01, 0xAB, 0xC4, 0xEA, 0x9C, 0x2A, 0xEE, 0xD5, 0x01];
+
+        let mut cursor = Cursor::new(bytes);
+        CentralDirectoryFileHeader::from_reader(&mut cursor).unwrap();
+    }
 
     #[test]
-    fn test_central_directory() {
+    fn test_central_directory_parsed_as_expected() {
  
-        let file = File::open(r"C:\eula.zip").unwrap();
-        let mut buf_reader = BufReader::new(file);
-        buf_reader.seek(SeekFrom::Start(35703)).unwrap();
+        let bytes = vec![0x50, 0x4B, 0x01, 0x02, 0x3F, 0x00, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00, 0x10, 0x64, 0x5C, 0x50, 0xC1, 0x5C, 0xE7, 0x5E, 0x9C, 0xEC, 0x31, 0x00, 0x39,
+        0x6B, 0x33, 0x00, 0x0C, 0x00, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x78, 0x44, 0x53, 0x65, 0x74, 0x75, 0x70,
+        0x2E, 0x65, 0x78, 0x65, 0x0A, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x18, 0x00, 0x2A, 0xCD, 0x6B, 0xC3, 0x2A, 0xEE, 0xD5, 0x01, 0xAB, 0xC4, 0xEA, 0x9C, 0x2A,
+        0xEE, 0xD5, 0x01, 0xAB, 0xC4, 0xEA, 0x9C, 0x2A, 0xEE, 0xD5, 0x01];
+        
+        let mut cursor = Cursor::new(bytes);
+        let central_dir_file = CentralDirectoryFileHeader::from_reader(&mut cursor).unwrap();
 
-        let central_dir_file = CentralDirectoryFileHeader::from_reader(&mut buf_reader);
-        println!("{:?}", central_dir_file.unwrap());
+        assert_eq!(central_dir_file.host_os, HostOS::MsDos);
+        assert_eq!(central_dir_file.zip_specification, ZipVersion::new(6, 3));
+        assert_eq!(central_dir_file.version_needed_to_extract, ZipVersion::new(2, 0));
+        assert_eq!(central_dir_file.general_purpose_flag, 0);
+        assert_eq!(central_dir_file.compression_method, CompressionMethod::Deflate);
+        assert_eq!(central_dir_file.last_modified_date_time, ZipDateTime::new(28, 2, 2020, 12, 32, 16));
+        assert_eq!(central_dir_file.crc32, 1592220865);
+        assert_eq!(central_dir_file.compressed_size, 3271836);
+        assert_eq!(central_dir_file.uncompressed_size, 3369785);
+        assert_eq!(central_dir_file.file_name_length, 12);
+        assert_eq!(central_dir_file.extra_field_length, 36);
+        assert_eq!(central_dir_file.file_comment_length, 0);
+        assert_eq!(central_dir_file.disk_number_start, 0);
+        assert_eq!(central_dir_file.internal_file_attr, 0);
+        assert_eq!(central_dir_file.external_file_attr, 32);
+        assert_eq!(central_dir_file.relative_offset, 0);
+        assert_eq!(central_dir_file.file_name, String::from("HxDSetup.exe"));
+        assert_eq!(central_dir_file.file_comment, String::from(""));
     }
 }

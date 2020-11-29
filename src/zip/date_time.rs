@@ -10,7 +10,7 @@ const SECOND_MASK: u16 = 0b11111;
 
 const MS_DOS_YEAR_START_OFFSET: u16 = 1980;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ZipDateTime {
     day: u8,
     month: u8,
@@ -21,6 +21,18 @@ pub struct ZipDateTime {
 }
 
 impl ZipDateTime {
+
+    pub fn new(day: u8, month: u8, year: u16, hour: u8, minute: u8, second: u8) -> Self {
+        ZipDateTime {
+            day,
+            month,
+            year,
+            hour,
+            minute,
+            second
+        }
+    }
+
     pub fn from_addr(date_addr: u16, time_addr: u16) -> Self {
         let day = (date_addr & DAY_MASK) as u8;
         let month = (date_addr >> 5 & MONTH_MASK) as u8;

@@ -60,13 +60,21 @@ impl HostOS {
 
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ZipVersion {
     major: u8,
     minor: u8
 }
 
 impl ZipVersion {
+
+    pub fn new(major: u8, minor: u8) -> Self {
+        ZipVersion {
+            major,
+            minor
+        }
+    }
+
     pub fn from_byte(byte: u8) -> Self {
 
         let major = byte / 10;
