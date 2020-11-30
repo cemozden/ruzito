@@ -38,43 +38,6 @@ impl EndOfCentralDirectory {
         }
     }
 
-    pub fn signature(&self) -> u32 {
-        self.signature
-    }
-
-    pub fn num_of_disk(&self) -> u16 {
-        self.num_of_disk
-    }
-
-    pub fn num_of_disk_start_central_dir(&self) -> u16 {
-        self.num_of_disk_start_central_dir
-    }
-
-    pub fn num_of_central_dir(&self) -> u16 {
-        self.num_of_central_dir
-    }
-
-    pub fn total_num_of_central_dir(&self) -> u16 {
-        self.total_num_of_central_dir
-    }
-
-    pub fn size_of_central_dir(&self) -> u32 {
-        self.size_of_central_dir
-    }
-
-    pub fn start_offset(&self) -> u32 {
-        self.start_offset
-    }
-
-    pub fn zip_comment_len(&self) -> u16 {
-        self.zip_comment_len
-    }
-
-    pub fn zip_comment(&self) -> &String {
-        &self.zip_comment
-    }
-
-
 }
 
 fn assert_from_bytes(eof_bytes: &[u8]) {
@@ -107,15 +70,15 @@ mod tests {
 
         let eof_central_dir = EndOfCentralDirectory::from_bytes(&bin);
 
-        assert_eq!(eof_central_dir.signature(), END_OF_CENTRAL_DIR_SIGNATURE as u32);
-        assert_eq!(eof_central_dir.num_of_disk(), 0);
-        assert_eq!(eof_central_dir.num_of_disk_start_central_dir(), 0);
-        assert_eq!(eof_central_dir.num_of_central_dir(), 9);
-        assert_eq!(eof_central_dir.total_num_of_central_dir(), 9);
-        assert_eq!(eof_central_dir.size_of_central_dir(), 531);
-        assert_eq!(eof_central_dir.start_offset(), 35703);
-        assert_eq!(eof_central_dir.zip_comment_len(), 0);
-        assert_eq!(eof_central_dir.zip_comment(), "");
+        assert_eq!(eof_central_dir.signature, END_OF_CENTRAL_DIR_SIGNATURE as u32);
+        assert_eq!(eof_central_dir.num_of_disk, 0);
+        assert_eq!(eof_central_dir.num_of_disk_start_central_dir, 0);
+        assert_eq!(eof_central_dir.num_of_central_dir, 9);
+        assert_eq!(eof_central_dir.total_num_of_central_dir, 9);
+        assert_eq!(eof_central_dir.size_of_central_dir, 531);
+        assert_eq!(eof_central_dir.start_offset, 35703);
+        assert_eq!(eof_central_dir.zip_comment_len, 0);
+        assert_eq!(eof_central_dir.zip_comment, "");
 
     }
 
