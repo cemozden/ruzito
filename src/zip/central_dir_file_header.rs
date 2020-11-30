@@ -13,6 +13,7 @@ pub struct CentralDirectoryFileHeader {
     zip_specification: ZipVersion,
     version_needed_to_extract: ZipVersion,
     general_purpose_flag: u16,
+    file_encrypted: bool,
     compression_method: CompressionMethod,
     last_modified_date_time: ZipDateTime,
     crc32: u32,
@@ -48,6 +49,8 @@ impl CentralDirectoryFileHeader {
         let file_comment_length = LittleEndian::read_u16(&cdf_bytes[32..34]);
         let mut file_comment_bytes: Vec<u8> = vec![0; file_comment_length as usize];
 
+        let general_purpose_flag = LittleEndian::read_u16(&cdf_bytes[8..10]);
+
         reader.read_exact(&mut file_name_bytes)?;
         reader.seek(SeekFrom::Current(extra_field_length as i64))?;
         reader.read_exact(&mut file_comment_bytes)?;
@@ -57,7 +60,8 @@ impl CentralDirectoryFileHeader {
             host_os: HostOS::from_byte(cdf_bytes[5]),
             zip_specification: ZipVersion::from_byte(cdf_bytes[4]),
             version_needed_to_extract:  ZipVersion::from_byte(cdf_bytes[6]),
-            general_purpose_flag: LittleEndian::read_u16(&cdf_bytes[8..10]),
+            general_purpose_flag,
+            file_encrypted: general_purpose_flag & 0x1 == 1,
             compression_method: CompressionMethod::from_addr(LittleEndian::read_u16(&cdf_bytes[10..12])),
             last_modified_date_time: ZipDateTime::from_addr(LittleEndian::read_u16(&cdf_bytes[14..16]), LittleEndian::read_u16(&cdf_bytes[12..14])),
             crc32: LittleEndian::read_u32(&cdf_bytes[16..20]),
@@ -88,7 +92,7 @@ mod tests {
     
     #[test]
     #[should_panic]
-    fn test_is_signature_valid() {
+    fn central_dir_file_signature_valid() {
         let bytes = vec![0x50, 0x4B, 0x00, 0x00, 0x3F, 0x00, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00, 0x10, 0x64, 0x5C, 0x50, 0xC1, 0x5C, 0xE7, 0x5E, 0x9C, 0xEC, 0x31, 0x00, 0x39,
         0x6B, 0x33, 0x00, 0x0C, 0x00, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x78, 0x44, 0x53, 0x65, 0x74, 0x75, 0x70,
         0x2E, 0x65, 0x78, 0x65, 0x0A, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x18, 0x00, 0x2A, 0xCD, 0x6B, 0xC3, 0x2A, 0xEE, 0xD5, 0x01, 0xAB, 0xC4, 0xEA, 0x9C, 0x2A,
@@ -99,7 +103,7 @@ mod tests {
     }
 
     #[test]
-    fn test_central_directory_parsed_as_expected() {
+    fn central_directory_parsed_as_expected() {
  
         let bytes = vec![0x50, 0x4B, 0x01, 0x02, 0x3F, 0x00, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00, 0x10, 0x64, 0x5C, 0x50, 0xC1, 0x5C, 0xE7, 0x5E, 0x9C, 0xEC, 0x31, 0x00, 0x39,
         0x6B, 0x33, 0x00, 0x0C, 0x00, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x78, 0x44, 0x53, 0x65, 0x74, 0x75, 0x70,
@@ -113,8 +117,9 @@ mod tests {
         assert_eq!(central_dir_file.zip_specification, ZipVersion::new(6, 3));
         assert_eq!(central_dir_file.version_needed_to_extract, ZipVersion::new(2, 0));
         assert_eq!(central_dir_file.general_purpose_flag, 0);
+        assert_eq!(central_dir_file.file_encrypted, false);
         assert_eq!(central_dir_file.compression_method, CompressionMethod::Deflate);
-        assert_eq!(central_dir_file.last_modified_date_time, ZipDateTime::new(28, 2, 2020, 12, 32, 16));
+        assert_eq!(central_dir_file.last_modified_date_time, ZipDateTime::new(28, 2, 2020, 12, 32, 32));
         assert_eq!(central_dir_file.crc32, 1592220865);
         assert_eq!(central_dir_file.compressed_size, 3271836);
         assert_eq!(central_dir_file.uncompressed_size, 3369785);

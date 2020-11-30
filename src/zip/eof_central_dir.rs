@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn test_new_eof_dir_assertions() {
+    fn test_eof_dir_assertions() {
         let bin = [1, 2, 3, 4];
         // Check if minimum size of eof central directory is greater or equal than 22
         EndOfCentralDirectory::from_bytes(&bin);
@@ -102,7 +102,7 @@ mod tests {
     }
 
     #[test]
-    fn test_eof_central_dir() {
+    fn eof_central_dir_parsed_as_expected() {
         let bin = [0x50, 0x4B, 0x05, 0x06, 0x00, 0x00, 0x00, 0x00, 0x09, 0x00, 0x09, 0x00, 0x13, 0x02, 0x00, 0x00, 0x77, 0x8B, 0x00, 0x00, 0x00, 0x00];
 
         let eof_central_dir = EndOfCentralDirectory::from_bytes(&bin);

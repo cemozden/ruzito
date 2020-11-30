@@ -40,7 +40,7 @@ impl ZipDateTime {
 
         let hour = (time_addr >> 11 & HOUR_MASK) as u8;
         let minute = (time_addr >> 5 & MINUTE_MASK) as u8;
-        let second = (time_addr & SECOND_MASK) as u8;
+        let second = ((time_addr & SECOND_MASK) * 2) as u8;
 
         ZipDateTime {
             day,
@@ -71,7 +71,7 @@ mod tests {
 
         assert_eq!(time.hour, 21);
         assert_eq!(time.minute, 15);
-        assert_eq!(time.second, 20);
+        assert_eq!(time.second, 40);
         println!("{:?}", time);
     }
 }
