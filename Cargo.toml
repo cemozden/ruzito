@@ -6,3 +6,4 @@ authors = ["Cem Özden <cemozden.tr@gmail.com>"]
 [dependencies]
 clap = "2.33.3"
 byteorder = "1.3.4"
+deflate = "0.8.6"

@@ -1,5 +1,3 @@
-use std::fmt::{Display, Formatter, Result};
-
 const DAY_MASK: u16   = 0b11111;
 const MONTH_MASK: u16 = 0b1111;
 const YEAR_MASK: u16  = 0b1111111;

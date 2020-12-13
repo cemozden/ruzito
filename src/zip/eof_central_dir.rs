@@ -18,8 +18,22 @@ pub struct EndOfCentralDirectory {
 }
 
 impl EndOfCentralDirectory {
+    pub fn start_offset(&self) -> u32 {
+        self.start_offset
+    }
 
-    pub fn from_bytes(eof_bin: &[u8]) -> Self {
+    pub fn total_num_of_central_dir(&self) -> u16 {
+        self.total_num_of_central_dir
+    }
+
+    pub fn size_of_central_dir(&self) -> u32 {
+        self.size_of_central_dir
+    }
+
+}
+
+impl From<&[u8]> for EndOfCentralDirectory {
+    fn from(eof_bin: &[u8]) -> Self {
         assert_from_bytes(eof_bin);
 
         let zip_comment_len = LittleEndian::read_u16(&eof_bin[20..22]);
@@ -37,7 +51,6 @@ impl EndOfCentralDirectory {
             zip_comment: String::from(str::from_utf8(&eof_bin[22..zip_comment_end_offset as usize]).unwrap())
         }
     }
-
 }
 
 fn assert_from_bytes(eof_bytes: &[u8]) {
@@ -56,19 +69,18 @@ mod tests {
     fn test_eof_dir_assertions() {
         let bin = [1, 2, 3, 4];
         // Check if minimum size of eof central directory is greater or equal than 22
-        EndOfCentralDirectory::from_bytes(&bin);
+        EndOfCentralDirectory::from(bin.as_ref());
 
         let bin = [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4];
         // Check whether function panics if signature is missing.
-        EndOfCentralDirectory::from_bytes(&bin);
-
+        EndOfCentralDirectory::from(bin.as_ref());
     }
 
     #[test]
     fn eof_central_dir_parsed_as_expected() {
         let bin = [0x50, 0x4B, 0x05, 0x06, 0x00, 0x00, 0x00, 0x00, 0x09, 0x00, 0x09, 0x00, 0x13, 0x02, 0x00, 0x00, 0x77, 0x8B, 0x00, 0x00, 0x00, 0x00];
 
-        let eof_central_dir = EndOfCentralDirectory::from_bytes(&bin);
+        let eof_central_dir = EndOfCentralDirectory::from(bin.as_ref());
 
         assert_eq!(eof_central_dir.signature, END_OF_CENTRAL_DIR_SIGNATURE as u32);
         assert_eq!(eof_central_dir.num_of_disk, 0);

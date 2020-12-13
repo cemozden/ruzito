@@ -4,8 +4,6 @@ use byteorder::{LittleEndian, ByteOrder};
 use super::mem_map::{ZipVersion, CompressionMethod, FILE_HEADER_SIGNATURE};
 use super::date_time::ZipDateTime;
 
-pub const MIN_LOCAL_FILE_HEADER_SIZE: usize = 30;
-
 #[derive(Debug)]
 pub struct LocalFileHeader {
     signature: u32,
@@ -24,7 +22,7 @@ pub struct LocalFileHeader {
 impl LocalFileHeader {
     pub fn from_reader<R>(reader: &mut R) -> Result<Self, Error>
     where R: Read + Seek {
-        let mut cdf_bytes = vec![0; MIN_LOCAL_FILE_HEADER_SIZE];
+        let mut cdf_bytes = vec![0; 30];
         reader.read_exact(&mut cdf_bytes)?;
 
         let reader_signature = LittleEndian::read_u32(&cdf_bytes[0..4]);

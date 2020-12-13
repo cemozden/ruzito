@@ -1,47 +1,49 @@
-use std::io::{Error, SeekFrom};
+use std::io::{BufReader, Error, SeekFrom};
 use std::io::prelude::*;
-use std::io::BufReader;
-use super::eof_central_dir::*;
+
+use super::eof_central_dir::{MIN_EOF_CENTRAL_DIRECTORY_SIZE, EndOfCentralDirectory};
 use super::central_dir_file_header::CentralDirectoryFileHeader;
 use std::path::Path;
 use std::fs::File;
 
-pub struct ZipMetadataParser;
-type CentralDirectories = Vec<CentralDirectoryFileHeader>;
+#[derive(Debug)]
+pub struct ZipMetadata {
+    end_of_central_directory: EndOfCentralDirectory,
+    central_directory_file_headers: Vec<CentralDirectoryFileHeader>
+}
 
-impl ZipMetadataParser {
+impl ZipMetadata {
 
-    pub fn parse_eof_central_dir<P>(file_path: P) -> Result<EndOfCentralDirectory, Error>
-    where P: AsRef<Path> {
-        let file = File::open(file_path)?;
-        let mut buf_reader = BufReader::new(file);
+    pub fn new<P>(file_path: P) -> Result<Self, Error> where P: AsRef<Path> {
+        let mut file = File::open(file_path)?;
+        let end_of_central_directory = ZipMetadata::parse_eof_central_dir(&mut file)?;
+        let central_directory_file_headers = ZipMetadata::parse_central_dir_headers(file, &end_of_central_directory)?;
 
+        Ok(ZipMetadata {
+            end_of_central_directory,
+            central_directory_file_headers
+        })
+    }
+
+    fn parse_eof_central_dir(zip_file: &mut File) -> Result<EndOfCentralDirectory, Error> {
         let mut buffer = vec![0; MIN_EOF_CENTRAL_DIRECTORY_SIZE];
 
-        buf_reader.seek(SeekFrom::End(-1 * (MIN_EOF_CENTRAL_DIRECTORY_SIZE as i64)))?;
-        buf_reader.read_exact(&mut buffer)?;
+        zip_file.seek(SeekFrom::End(-1 * (MIN_EOF_CENTRAL_DIRECTORY_SIZE as i64)))?;
+        zip_file.read_exact(&mut buffer)?;
 
-        Ok(EndOfCentralDirectory::from_bytes(&buffer))
+        Ok(EndOfCentralDirectory::from(buffer.as_ref()))
     }
     
-    pub fn parse_central_dir_headers<P>(file_path: P, start_offset: u32, size: u16) -> Result<CentralDirectories, Error>
-    where P: AsRef<Path> {
-        let file = File::open(file_path)?;
-        let mut buf_reader = BufReader::new(file);
+    fn parse_central_dir_headers(zip_file: File, eof_central_dir: &EndOfCentralDirectory) -> Result<Vec<CentralDirectoryFileHeader>, Error> {
 
-        buf_reader.seek(SeekFrom::Start(start_offset as u64))?;
-        
-        let mut central_directories: CentralDirectories = Vec::with_capacity(size as usize);
-        
-        for _ in 0..size as usize {
-            central_directories.push(match CentralDirectoryFileHeader::from_reader(&mut buf_reader) {
-                Ok(central_directory) => central_directory,
-                Err(err) => return Err(err)
-            });
-        }
+        let mut buf_reader = BufReader::new(zip_file);
+        let central_dir_count = eof_central_dir.total_num_of_central_dir() as usize;
 
-        Ok(central_directories)
+        buf_reader.seek(SeekFrom::Start(eof_central_dir.start_offset() as u64))?;
+
+        (0..central_dir_count).into_iter()
+            .map(|_| CentralDirectoryFileHeader::from_reader(&mut buf_reader))
+            .collect()
     }
-
 
 }
