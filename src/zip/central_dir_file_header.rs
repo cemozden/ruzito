@@ -4,7 +4,7 @@ use std::io::Error;
 use super::mem_map::{HostOS, CENTRAL_DIR_SIGNATURE, ZipVersion, CompressionMethod};
 use byteorder::{LittleEndian, ByteOrder};
 use super::date_time::*;
-pub const MIN_CENTRAL_DIRECTORY_SIZE: usize = 46;
+use super::zip_item::ZipItem;
 
 #[derive(Debug)]
 pub struct CentralDirectoryFileHeader {
@@ -35,7 +35,7 @@ impl CentralDirectoryFileHeader {
     pub fn from_reader<R>(reader: &mut R) -> Result<Self, Error>
     where R: Read + Seek {
         
-        let mut cdf_bytes = vec![0; MIN_CENTRAL_DIRECTORY_SIZE];
+        let mut cdf_bytes = vec![0; 46];
         reader.read_exact(&mut cdf_bytes)?;
 
         let reader_signature = LittleEndian::read_u32(&cdf_bytes[0..4]);
@@ -79,10 +79,17 @@ impl CentralDirectoryFileHeader {
         })
     }
 
-    pub fn host_os(&self) -> &HostOS {
-        &self.host_os
-    }
+}
 
+impl Into<ZipItem> for CentralDirectoryFileHeader {
+    fn into(self) -> ZipItem {
+        ZipItem::new(
+            self.compression_method,
+   self.file_name,
+            self.uncompressed_size,
+            self.compressed_size,
+            self.last_modified_date_time)
+    }
 }
 
 #[cfg(test)]

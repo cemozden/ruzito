@@ -7,22 +7,16 @@ use std::path::Path;
 use std::fs::File;
 
 #[derive(Debug)]
-pub struct ZipMetadata {
-    end_of_central_directory: EndOfCentralDirectory,
-    central_directory_file_headers: Vec<CentralDirectoryFileHeader>
-}
+pub struct ZipMetadata;
 
 impl ZipMetadata {
 
-    pub fn new<P>(file_path: P) -> Result<Self, Error> where P: AsRef<Path> {
+    pub fn parse<P>(file_path: P) -> Result<(EndOfCentralDirectory, Vec<CentralDirectoryFileHeader>), Error> where P: AsRef<Path> {
         let mut file = File::open(file_path)?;
         let end_of_central_directory = ZipMetadata::parse_eof_central_dir(&mut file)?;
         let central_directory_file_headers = ZipMetadata::parse_central_dir_headers(file, &end_of_central_directory)?;
 
-        Ok(ZipMetadata {
-            end_of_central_directory,
-            central_directory_file_headers
-        })
+        Ok((end_of_central_directory, central_directory_file_headers))
     }
 
     fn parse_eof_central_dir(zip_file: &mut File) -> Result<EndOfCentralDirectory, Error> {
