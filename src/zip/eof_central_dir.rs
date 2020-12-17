@@ -26,10 +26,6 @@ impl EndOfCentralDirectory {
         self.total_num_of_central_dir
     }
 
-    pub fn size_of_central_dir(&self) -> u32 {
-        self.size_of_central_dir
-    }
-
 }
 
 impl From<&[u8]> for EndOfCentralDirectory {

@@ -1,4 +1,4 @@
-use std::io::Error;
+use std::io::{Error, SeekFrom};
 use std::io::prelude::*;
 use byteorder::{LittleEndian, ByteOrder};
 use super::mem_map::{ZipVersion, CompressionMethod, FILE_HEADER_SIGNATURE};
@@ -16,12 +16,15 @@ pub struct LocalFileHeader {
     compressed_size: u32,
     uncompressed_size: u32,
     file_name_length: u16,
-    file_name: String
+    file_name: String,
+    content_start_offset: u64
 }
 
 impl LocalFileHeader {
     pub fn from_reader<R>(reader: &mut R) -> Result<Self, Error>
     where R: Read + Seek {
+        let start_offset = reader.seek(SeekFrom::Current(0)).unwrap();
+
         let mut cdf_bytes = vec![0; 30];
         reader.read_exact(&mut cdf_bytes)?;
 
@@ -30,6 +33,8 @@ impl LocalFileHeader {
 
         let file_name_length = LittleEndian::read_u16(&cdf_bytes[26..28]);
         let mut file_name_bytes: Vec<u8> = vec![0; file_name_length as usize];
+
+        let extra_field_length = LittleEndian::read_u16(&cdf_bytes[28..30]);
 
         let general_purpose_flag = LittleEndian::read_u16(&cdf_bytes[6..8]);
 
@@ -46,8 +51,21 @@ impl LocalFileHeader {
             compressed_size: LittleEndian::read_u32(&cdf_bytes[18..22]),
             uncompressed_size: LittleEndian::read_u32(&cdf_bytes[22..26]),
             file_name_length,
-            file_name: String::from_utf8(file_name_bytes).unwrap()
+            file_name: String::from_utf8(file_name_bytes).unwrap(),
+            content_start_offset: start_offset + 30 + (file_name_length + extra_field_length) as u64
         })
+    }
+
+    pub fn compression_method(&self) -> &CompressionMethod {
+        &self.compression_method
+    }
+
+    pub fn crc32(&self) -> u32 {
+        return self.crc32
+    }
+
+    pub fn content_start_offset(&self) -> u64 {
+        self.content_start_offset
     }
 }
 

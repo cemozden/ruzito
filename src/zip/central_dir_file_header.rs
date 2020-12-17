@@ -88,7 +88,9 @@ impl Into<ZipItem> for CentralDirectoryFileHeader {
    self.file_name,
             self.uncompressed_size,
             self.compressed_size,
-            self.last_modified_date_time)
+            self.last_modified_date_time,
+            self.relative_offset
+        )
     }
 }
 

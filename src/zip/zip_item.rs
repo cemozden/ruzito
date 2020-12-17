@@ -1,5 +1,5 @@
 use super::{date_time::ZipDateTime, mem_map::CompressionMethod};
-use std::path::Path;
+
 #[derive(Debug)]
 pub struct ZipItem {
     item_path: String,
@@ -7,21 +7,22 @@ pub struct ZipItem {
     uncompressed_size: u32,
     compressed_size: u32,
     compression_method: CompressionMethod,
-    modified_date_time: ZipDateTime
+    modified_date_time: ZipDateTime,
+    start_offset: u32
 
 }
-
 impl ZipItem {
 
-    pub fn new(compression_method: CompressionMethod, item_path: String, uncompressed_size: u32, compressed_size: u32, modified_date_time: ZipDateTime) -> Self {
-        let is_file = Path::new(&item_path).extension().is_some();
+    pub fn new(compression_method: CompressionMethod, item_path: String, uncompressed_size: u32, compressed_size: u32, modified_date_time: ZipDateTime, start_offset: u32) -> Self {
+        let is_file = !item_path.ends_with("/"); 
         Self {
             compression_method,
             item_path,
             is_file,
             uncompressed_size, 
             compressed_size,
-            modified_date_time
+            modified_date_time,
+            start_offset
         }
     }
 
@@ -47,5 +48,9 @@ impl ZipItem {
 
     pub fn compressed_size(&self) -> u32 {
         self.compressed_size
+    }
+
+    pub fn start_offset(&self) -> u32 {
+        self.start_offset
     }
 }
