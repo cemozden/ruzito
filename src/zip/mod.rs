@@ -1,4 +1,4 @@
-use std::{ffi::OsString, fs::File, io::{BufReader, BufWriter, Read, Seek, SeekFrom}, path::Path};
+use std::{ffi::OsString, path::Path};
 
 mod mem_map;
 mod local_file_header;
@@ -12,6 +12,7 @@ mod compression_decoder;
 
 pub mod zip_item;
 
+#[derive(Debug)]
 pub enum ZipError {
     FileIOError(std::io::Error)
 }
@@ -27,6 +28,7 @@ pub enum ExtractError {
     UnknownCompressionMethod
 }
 
+#[derive(Debug)]
 pub struct ZipFile {
     file_count: u16,
     zip_items: Vec<zip_item::ZipItem>,
@@ -75,60 +77,8 @@ impl ZipFile {
     }
 
     pub fn extract_all(&self) -> Vec<Result<ZipItemExtract, ExtractError>> {
-        self.zip_items.iter().map(|item| self.extract_zip_item(item)).collect()
+        self.zip_items.iter().map(|item| item.extract(&self.zip_file_path)).collect()
     }
-
-    pub fn extract_zip_item(&self, zip_item: &zip_item::ZipItem) -> Result<ZipItemExtract, ExtractError> {
-        let zip_file_path = Path::new(&self.zip_file_path);
-
-        match zip_file_path.parent() {
-            Some(parent_path) => {
-                let item_extract_dest_path = Path::new(parent_path).join(zip_item.item_path());
-                println!("{:?}", &item_extract_dest_path.as_os_str());
-
-                if !zip_item.is_file() {
-                    match std::fs::create_dir_all(item_extract_dest_path.clone()) {
-                        Ok(_) =>  return Ok(ZipItemExtract {
-                                                file_path: OsString::from(item_extract_dest_path),
-                                                item_size: 0,
-                                                crc32: 0
-                                            }),
-                        Err(_) => return Err(ExtractError::CreateDirError(format!("{:?}", &item_extract_dest_path)))
-                    }
-                } else {
-                    let zip_file = File::open(&self.zip_file_path).map_err(|_| ExtractError::InvalidZipFile(format!("{:?}", &self.zip_file_path)))?;
-                    let output_file = File::create(item_extract_dest_path.clone()).map_err(|_| ExtractError::FileCreationFailed)?;
-
-                    let mut zip_file_reader = BufReader::new(zip_file);
-                    let mut buf_writer = BufWriter::new(output_file);
-
-                    let file_start_offset = zip_item.start_offset();
-                    zip_file_reader.seek(SeekFrom::Start(file_start_offset as u64)).map_err(|_| ExtractError::UnableToSeekZipItem(file_start_offset))?;
-
-                    let local_file_header = local_file_header::LocalFileHeader::from_reader(&mut zip_file_reader).map_err(|err| ExtractError::IOError(err))?;
-                    let content_start_offset = local_file_header.content_start_offset();
-                    
-                    zip_file_reader.seek(SeekFrom::Start(content_start_offset)).map_err(|_| ExtractError::UnableToSeekZipItem(file_start_offset))?;
-                    
-                    let mut content_reader = zip_file_reader.take(zip_item.compressed_size() as u64);
-                    let decode_to_file = compression_decoder::CompressionDecoder::decode_to_file(local_file_header.compression_method(), 
-                            &mut content_reader, 
-                            &mut buf_writer)
-                                .map_err(|err| ExtractError::IOError(err))?;
-
-                    Ok(ZipItemExtract {
-                        file_path: OsString::from(item_extract_dest_path),
-                        item_size: decode_to_file as u32,
-                        crc32: local_file_header.crc32()
-                    })
-                }
-            },
-            None => return Err(ExtractError::InvalidParentPath(format!("{:?}", &self.zip_file_path)))
-        }
-
-    }
-
-    //TODO: Write folder creator with inline
 
     pub fn file_count(&self) -> u16 {
         self.file_count

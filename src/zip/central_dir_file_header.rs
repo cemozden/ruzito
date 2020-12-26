@@ -85,7 +85,7 @@ impl Into<ZipItem> for CentralDirectoryFileHeader {
     fn into(self) -> ZipItem {
         ZipItem::new(
             self.compression_method,
-   self.file_name,
+            self.file_name,
             self.uncompressed_size,
             self.compressed_size,
             self.last_modified_date_time,
