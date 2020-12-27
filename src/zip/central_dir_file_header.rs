@@ -1,4 +1,4 @@
-use std::io::prelude::*;
+use std::io::{ErrorKind, prelude::*};
 use std::io::SeekFrom;
 use std::io::Error;
 use super::mem_map::{HostOS, CENTRAL_DIR_SIGNATURE, ZipVersion, CompressionMethod};
@@ -39,7 +39,9 @@ impl CentralDirectoryFileHeader {
         reader.read_exact(&mut cdf_bytes)?;
 
         let reader_signature = LittleEndian::read_u32(&cdf_bytes[0..4]);
-        assert!(reader_signature == CENTRAL_DIR_SIGNATURE);
+        if reader_signature != CENTRAL_DIR_SIGNATURE {
+            return Err(Error::new(ErrorKind::InvalidData, format!("Invalid Local Header. {:#} ", CENTRAL_DIR_SIGNATURE)));
+        }
         
         let file_name_length = LittleEndian::read_u16(&cdf_bytes[28..30]);
         let mut file_name_bytes: Vec<u8> = vec![0; file_name_length as usize];

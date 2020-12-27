@@ -25,7 +25,10 @@ impl ZipMetadata {
         zip_file.seek(SeekFrom::End(-1 * (MIN_EOF_CENTRAL_DIRECTORY_SIZE as i64)))?;
         zip_file.read_exact(&mut buffer)?;
 
-        Ok(EndOfCentralDirectory::from(buffer.as_ref()))
+        Ok(match EndOfCentralDirectory::from(buffer.as_ref()) {
+            Ok(eof_directory) => eof_directory,
+            Err(err) =>  return Err(err)
+        })
     }
     
     fn parse_central_dir_headers(zip_file: File, eof_central_dir: &EndOfCentralDirectory) -> Result<Vec<CentralDirectoryFileHeader>, Error> {

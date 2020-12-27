@@ -1,4 +1,4 @@
-use std::io::{Error, SeekFrom};
+use std::io::{Error, ErrorKind, SeekFrom};
 use std::io::prelude::*;
 use byteorder::{LittleEndian, ByteOrder};
 use super::mem_map::{ZipVersion, CompressionMethod, FILE_HEADER_SIGNATURE};
@@ -29,7 +29,9 @@ impl LocalFileHeader {
         reader.read_exact(&mut cdf_bytes)?;
 
         let reader_signature = LittleEndian::read_u32(&cdf_bytes[0..4]);
-        assert!(reader_signature == FILE_HEADER_SIGNATURE);
+        if reader_signature != FILE_HEADER_SIGNATURE {
+            return Err(Error::new(ErrorKind::InvalidData, format!("Invalid Local Header. {:#} ", FILE_HEADER_SIGNATURE)));
+        }
 
         let file_name_length = LittleEndian::read_u16(&cdf_bytes[26..28]);
         let mut file_name_bytes: Vec<u8> = vec![0; file_name_length as usize];
