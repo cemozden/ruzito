@@ -60,10 +60,6 @@ impl LocalFileHeader {
         &self.compression_method
     }
 
-    pub fn crc32(&self) -> u32 {
-        return self.crc32
-    }
-
     pub fn content_start_offset(&self) -> u64 {
         self.content_start_offset
     }

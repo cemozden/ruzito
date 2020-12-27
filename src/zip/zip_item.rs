@@ -1,6 +1,6 @@
-use std::{ffi::OsString, fs::File, io::{BufReader, BufWriter, Read, Seek, SeekFrom}, path::Path};
+use std::{fs::File, io::{BufReader, BufWriter, Read, Seek, SeekFrom}, path::Path};
 
-use super::{ExtractError, ZipItemExtract, compression_decoder, date_time::ZipDateTime, local_file_header, mem_map::CompressionMethod};
+use super::{ExtractError, compression_decoder, date_time::ZipDateTime, local_file_header, mem_map::CompressionMethod};
 
 #[derive(Debug)]
 pub struct ZipItem {
@@ -45,24 +45,25 @@ impl ZipItem {
     }
 
 
-    pub fn extract<P>(&self, dest_path: P) -> Result<ZipItemExtract, ExtractError> where P: AsRef<Path> {
+    pub fn extract<P>(&self, dest_path: P) -> Result<Box<dyn AsRef<Path>>, ExtractError> where P: AsRef<Path> {
 
         match dest_path.as_ref().parent() {
             Some(parent_path) => {
-                let item_extract_dest_path = Path::new(parent_path).join(self.item_path());
-                println!("{:?}", &item_extract_dest_path.as_os_str());
+                let item_path = Some(&self.item_path)
+                    .filter(|_| cfg!(windows))
+                    .map(|p| p.replace("/", r"\"))
+                    .unwrap_or(String::from(&self.item_path));
+
+                let item_extract_dest_path = Path::new(parent_path).join(item_path);
+                println!("{}", item_extract_dest_path.display());
 
                 if !self.is_file() {
                     match std::fs::create_dir_all(item_extract_dest_path.clone()) {
-                        Ok(_) =>  return Ok(ZipItemExtract {
-                                                file_path: OsString::from(item_extract_dest_path),
-                                                item_size: 0,
-                                                crc32: 0
-                                            }),
-                        Err(_) => return Err(ExtractError::CreateDirError(format!("{:?}", &item_extract_dest_path)))
+                        Ok(_) =>  return Ok(Box::new(item_extract_dest_path)),
+                        Err(_) => return Err(ExtractError::CreateDirError(format!("{}", &item_extract_dest_path.display())))
                     }
                 } else {
-                    let zip_file = File::open(&dest_path).map_err(|_| ExtractError::InvalidZipFile(format!("{:?}", &dest_path.as_ref().clone())))?;
+                    let zip_file = File::open(&dest_path).map_err(|err| ExtractError::IOError(err))?;
                     let output_file = File::create(item_extract_dest_path.clone()).map_err(|_| ExtractError::FileCreationFailed)?;
 
                     let mut zip_file_reader = BufReader::new(zip_file);
@@ -77,19 +78,15 @@ impl ZipItem {
                     zip_file_reader.seek(SeekFrom::Start(content_start_offset)).map_err(|_| ExtractError::UnableToSeekZipItem(file_start_offset))?;
                     
                     let mut content_reader = zip_file_reader.take(self.compressed_size() as u64);
-                    let decode_to_file = compression_decoder::CompressionDecoder::decode_to_file(local_file_header.compression_method(), 
+                    compression_decoder::CompressionDecoder::decode_to_file(local_file_header.compression_method(), 
                             &mut content_reader, 
                             &mut buf_writer)
                                 .map_err(|err| ExtractError::IOError(err))?;
 
-                    Ok(ZipItemExtract {
-                        file_path: OsString::from(item_extract_dest_path),
-                        item_size: decode_to_file as u32,
-                        crc32: local_file_header.crc32()
-                    })
+                    Ok(Box::new(item_extract_dest_path))
                 }
             },
-            None => return Err(ExtractError::InvalidParentPath(format!("{:?}", dest_path.as_ref())))
+            None => return Err(ExtractError::InvalidParentPath(format!("{}", dest_path.as_ref().display())))
         }
 
     }

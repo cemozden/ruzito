@@ -22,10 +22,8 @@ pub enum ExtractError {
     InvalidParentPath(String),
     CreateDirError(String),
     FileCreationFailed,
-    InvalidZipFile(String),
     UnableToSeekZipItem(u32),
-    IOError(std::io::Error),
-    UnknownCompressionMethod
+    IOError(std::io::Error)
 }
 
 #[derive(Debug)]
@@ -76,8 +74,25 @@ impl ZipFile {
         })
     }
 
-    pub fn extract_all(&self) -> Vec<Result<ZipItemExtract, ExtractError>> {
-        self.zip_items.iter().map(|item| item.extract(&self.zip_file_path)).collect()
+    pub fn extract_all(&mut self) {
+        let mut item_iterator = self.zip_items.iter_mut();
+
+        while let Some(item) = item_iterator.next() {
+            let item_extract_result = item.extract(&self.zip_file_path);
+
+            if let Err(err) = item_extract_result {
+                println!("An error occured while extracting the file {}!", item.item_path());
+                match err {
+                    ExtractError::InvalidParentPath(parent_path) => eprintln!("Invalid parent path to extract files! Given Path: {}", parent_path),
+                    ExtractError::CreateDirError(dir_path) => eprintln!("Unable to create directory of {}", dir_path),
+                    ExtractError::FileCreationFailed => eprintln!("Unable to create the extracted file!"),
+                    ExtractError::UnableToSeekZipItem(offset) => eprintln!("Unable to seek the ZIP file!, Failed offset: {}", offset),
+                    ExtractError::IOError(err) => eprintln!("I/O error occured while extracting the file! {}", err),
+                }
+
+                break;
+            }
+        }
     }
 
     pub fn file_count(&self) -> u16 {

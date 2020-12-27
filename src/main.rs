@@ -7,14 +7,15 @@ mod zip;
 
 use std::{path::Path, process::exit};
 
-use clap::{App, Arg, SubCommand};
+use clap::{App, AppSettings, Arg, SubCommand};
 use zip::ZipFile;
 
 fn main() {
     let matches = App::new("ruzito")
         .version("1.0.0")
         .author("Cem Ozden <cemozden93@outlook.com>")
-        .about("Simple ZIP extract")
+        .about("Simple Archive Extraction Tool")
+        .settings(&[AppSettings::ArgRequiredElseHelp, AppSettings::ArgsNegateSubcommands, AppSettings::SubcommandRequiredElseHelp])
         .subcommand(SubCommand::with_name("zip")
             .arg(Arg::with_name("extract")
                     .short("x")
@@ -49,7 +50,7 @@ fn main() {
                 if zip_file_path.exists() {
                     let zip_file = ZipFile::new(zip_file_path);
 
-                    let zip_file = match zip_file {
+                    let mut zip_file = match zip_file {
                         Ok(zip_file) => zip_file,
                         Err(err) => {
                             eprintln!("An error occured while extracting the ZIP file! Error: {:?}", err);
@@ -57,11 +58,24 @@ fn main() {
                         }
                     };
 
-                    println!("{:?}", zip_file.extract_all());
+                    zip_file.extract_all();
                 }
                 else {
                     eprintln!(r"Unable to find the given path {:?}", zip_file_path);
                 }
+            }
+            else {
+                let zip_file = ZipFile::new(zip_file_path);
+
+                let mut zip_file = match zip_file {
+                        Ok(zip_file) => zip_file,
+                        Err(err) => {
+                            eprintln!("An error occured while extracting the ZIP file! Error: {:?}", err);
+                            exit(-1);
+                        }
+                    };
+
+                    zip_file.extract_all();
             }
         }
     }
