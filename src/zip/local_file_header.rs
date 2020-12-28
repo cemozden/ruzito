@@ -39,6 +39,14 @@ impl LocalFileHeader {
         let extra_field_length = LittleEndian::read_u16(&cdf_bytes[28..30]);
 
         let general_purpose_flag = LittleEndian::read_u16(&cdf_bytes[6..8]);
+        let content_start_offset = start_offset + 30 + (file_name_length + extra_field_length) as u64;
+        let crc32 = LittleEndian::read_u32(&cdf_bytes[14..18]);
+        let compressed_size = LittleEndian::read_u32(&cdf_bytes[18..22]);
+        let uncompressed_size = LittleEndian::read_u32(&cdf_bytes[22..26]);
+
+        if general_purpose_flag >> 2 & 1 == 1 {
+            return Err(Error::new(ErrorKind::InvalidData, "Data descriptor is currently not supported."));
+        }
 
         reader.read_exact(&mut file_name_bytes)?;
 
@@ -49,12 +57,12 @@ impl LocalFileHeader {
             compression_method: CompressionMethod::from_addr(LittleEndian::read_u16(&cdf_bytes[8..10])),
             file_encrypted: general_purpose_flag & 0x1 == 1,
             last_modified_date_time: ZipDateTime::from_addr(LittleEndian::read_u16(&cdf_bytes[12..14]), LittleEndian::read_u16(&cdf_bytes[10..12])),
-            crc32: LittleEndian::read_u32(&cdf_bytes[14..18]),
-            compressed_size: LittleEndian::read_u32(&cdf_bytes[18..22]),
-            uncompressed_size: LittleEndian::read_u32(&cdf_bytes[22..26]),
+            crc32,
+            compressed_size,
+            uncompressed_size,
             file_name_length,
             file_name: String::from_utf8(file_name_bytes).unwrap(),
-            content_start_offset: start_offset + 30 + (file_name_length + extra_field_length) as u64
+            content_start_offset
         })
     }
 
@@ -90,7 +98,7 @@ mod tests {
         let mut cursor = Cursor::new(bytes);
         let local_file_header = LocalFileHeader::from_reader(&mut cursor).unwrap();
 
-        assert_eq!(local_file_header.version_needed_to_extract, ZipVersion::new(2, 0));
+        assert_eq!(local_file_header.version_needed_to_extract, ZipVersion::from_byte(20));
         assert_eq!(local_file_header.general_purpose_flag, 0);
         assert_eq!(local_file_header.file_encrypted, false);
         assert_eq!(local_file_header.compression_method, CompressionMethod::Deflate);
@@ -100,6 +108,18 @@ mod tests {
         assert_eq!(local_file_header.uncompressed_size, 17734);
         assert_eq!(local_file_header.file_name_length, 13);
         assert_eq!(local_file_header.file_name, String::from("eula.1028.txt"));
+    }
+
+    #[test]
+    fn returns_error_if_data_descriptor_specified() {
+        let bytes = vec![0x50, 0x4B, 0x08, 0x04, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00, 0x34, 0xBE, 0x7D, 0x51, 0xCF, 0x2C, 0x95, 0x02, 0x10, 0x11, 0x00, 0x00, 0x46, 0x45, 0x00, 0x00,
+        0x0D, 0x00, 0x00, 0x00, 0x65, 0x75, 0x6C, 0x61, 0x2E, 0x31, 0x30, 0x32, 0x38, 0x2E, 0x74, 0x78, 0x74];
+
+        let mut cursor = Cursor::new(bytes);
+        let local_file_header = LocalFileHeader::from_reader(&mut cursor);
+
+        assert!(local_file_header.is_err());
+        assert!(local_file_header.err().unwrap().kind() == ErrorKind::InvalidData)
     }
 
 }

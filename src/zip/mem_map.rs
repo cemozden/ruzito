@@ -1,8 +1,6 @@
 pub const FILE_HEADER_SIGNATURE: u32 = 0x04034b50;
-pub const DIGITAL_SIGNATURE_HEADER: u32 = 0x05054b50;
 pub const END_OF_CENTRAL_DIR_SIGNATURE: u32 = 0x06054b50;
 pub const CENTRAL_DIR_SIGNATURE: u32 = 0x02014b50;
-pub const ARCHIVE_EXTRA_DATA_SIGNATURE: u32 = 0x08064b50;
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum HostOS {
@@ -67,13 +65,6 @@ pub struct ZipVersion {
 }
 
 impl ZipVersion {
-
-    pub fn new(major: u8, minor: u8) -> Self {
-        ZipVersion {
-            major,
-            minor
-        }
-    }
 
     pub fn from_byte(byte: u8) -> Self {
 

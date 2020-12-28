@@ -125,8 +125,8 @@ mod tests {
         let central_dir_file = CentralDirectoryFileHeader::from_reader(&mut cursor).unwrap();
 
         assert_eq!(central_dir_file.host_os, HostOS::MsDos);
-        assert_eq!(central_dir_file.zip_specification, ZipVersion::new(6, 3));
-        assert_eq!(central_dir_file.version_needed_to_extract, ZipVersion::new(2, 0));
+        assert_eq!(central_dir_file.zip_specification, ZipVersion::from_byte(63));
+        assert_eq!(central_dir_file.version_needed_to_extract, ZipVersion::from_byte(20));
         assert_eq!(central_dir_file.general_purpose_flag, 0);
         assert_eq!(central_dir_file.file_encrypted, false);
         assert_eq!(central_dir_file.compression_method, CompressionMethod::Deflate);
