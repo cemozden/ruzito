@@ -64,6 +64,21 @@ impl ZipItem {
                     }
                 } else {
                     let zip_file = File::open(&dest_path).map_err(|err| ExtractError::IOError(err))?;
+
+                    // Check if parent folder is created
+                    let output_file_parent_path = Path::new(&item_extract_dest_path).parent();
+
+                    match output_file_parent_path {
+                        Some(path) => {
+                            if !path.exists() {
+                                if let Err(_) = std::fs::create_dir_all(path) {
+                                    return Err(ExtractError::CreateDirError(format!("{}", &item_extract_dest_path.display())))
+                                }
+                            }
+                        },
+                        None => return Err(ExtractError::CreateDirError(format!("{}", &item_extract_dest_path.display())))
+                    }
+
                     let output_file = File::create(item_extract_dest_path.clone()).map_err(|_| ExtractError::FileCreationFailed)?;
 
                     let mut zip_file_reader = BufReader::new(zip_file);
