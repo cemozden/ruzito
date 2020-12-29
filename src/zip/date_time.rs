@@ -1,3 +1,5 @@
+use std::{fmt::Display, write};
+
 const DAY_MASK: u16   = 0b11111;
 const MONTH_MASK: u16 = 0b1111;
 const YEAR_MASK: u16  = 0b1111111;
@@ -48,6 +50,12 @@ impl ZipDateTime {
             minute,
             second
         }
+    }
+}
+
+impl Display for ZipDateTime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:02}/{:02}/{} {:02}:{:02}:{:02}", self.month, self.day, self.year, self.hour, self.minute, self.second)
     }
 }
 

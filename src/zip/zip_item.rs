@@ -44,6 +44,10 @@ impl ZipItem {
         &self.compression_method
     }
 
+    pub fn modified_date_time(&self) -> &ZipDateTime {
+        &self.modified_date_time
+    }
+
 
     pub fn extract<P>(&self, dest_path: P) -> Result<Box<dyn AsRef<Path>>, ExtractError> where P: AsRef<Path> {
 

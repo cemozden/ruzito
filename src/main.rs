@@ -2,13 +2,17 @@ extern crate clap;
 extern crate byteorder;
 extern crate inflate;
 extern crate crc;
+extern crate cli_table;
 
 mod zip;
 
-use std::{path::Path, process::exit};
+use std::{ffi::{OsString}, path::Path, process::exit};
 
 use clap::{App, AppSettings, Arg, SubCommand};
 use zip::ZipFile;
+use cli_table::{Cell, CellStruct, Table, print_stdout};
+
+type TableRow = Vec<CellStruct>;
 
 fn main() {
     let matches = App::new("ruzito")
@@ -29,27 +33,27 @@ fn main() {
                 .short("v")
                 .long("verbose") 
                 .help("Extracts the given zip file")
+                .case_insensitive(true))
+            .arg(Arg::with_name("list")
+                .short("l")
+                .long("list")
+                .help("Lists the files/directories inside of the ZIP file")
                 .case_insensitive(true)
-                .multiple(true))
+                .takes_value(true)
+                .value_name("ZIP_FILE")
+
+        )
     ).get_matches();
 
     if let Some(matches) = matches.subcommand_matches("zip") {
         if matches.is_present("extract") {
-            let zip_file_path = Path::new(matches.value_of("extract").unwrap());
+            let file_path = matches.value_of("extract").unwrap();
+            let zip_file_path = get_path(file_path);
 
-            if !zip_file_path.exists() {
-                let current_dir = match std::env::current_dir() {
-                    Ok(path) => path,
-                    Err(err) => {
-                        eprintln!("An error occured! Error: {}", err);
-                        exit(-1);
-                    }
-                };
-                let zip_file_path = Path::new(current_dir.as_path()).with_file_name(zip_file_path);
-
-                if zip_file_path.exists() {
-                    let zip_file = ZipFile::new(zip_file_path);
-
+            match zip_file_path {
+                Some(path) => {
+                    let zip_file = ZipFile::new(path);
+                    
                     let mut zip_file = match zip_file {
                         Ok(zip_file) => zip_file,
                         Err(err) => {
@@ -59,25 +63,99 @@ fn main() {
                     };
 
                     zip_file.extract_all();
-                }
-                else {
-                    eprintln!(r"Unable to find the given path {:?}", zip_file_path);
+                },
+                None => {
+                    eprintln!("Given path {} is not a valid path! Exiting...", file_path);
+                    exit(-1);
                 }
             }
-            else {
-                let zip_file = ZipFile::new(zip_file_path);
+        }
 
-                let mut zip_file = match zip_file {
+        if matches.is_present("list") {
+            let file_path = matches.value_of("list").unwrap();
+            let zip_file_path = get_path(file_path);
+
+            match zip_file_path {
+                Some(path) => {
+                    let zip_file = match ZipFile::new(path) {
                         Ok(zip_file) => zip_file,
                         Err(err) => {
                             eprintln!("An error occured while extracting the ZIP file! Error: {:?}", err);
-                            exit(-1);
+                            exit(-1)
                         }
                     };
 
-                    zip_file.extract_all();
+                    let list_table = zip_file.iter()
+                        .map(|item| {
+
+                            let compression_perc = if item.uncompressed_size() > 0 {
+                                let compressed_size = item.compressed_size() as f32;
+                                let uncompressed_size = item.uncompressed_size() as f32;
+
+                                let perc = ((compressed_size / uncompressed_size) * 100.0) as f32;
+                                format!("({:.1}%)", perc)
+                            }
+                            else { String::from("") };
+
+                            vec![
+                                item.item_path().cell(),
+                                format!("{:?} {}", item.compression_method(), compression_perc).cell(),
+                                item.compressed_size().cell(),
+                                item.uncompressed_size().cell(),
+                                format!("{}", item.modified_date_time()).cell()
+                            ]}
+                        )
+                        .collect::<Vec<TableRow>>()
+                        .table()
+                        .title(vec![
+                          "Item".cell(),
+                          "Compression".cell(),
+                          "Compressed Size".cell(),
+                          "File Size".cell(),
+                          "Modified Date".cell()
+                        ]);
+
+                      if let Err(err) = print_stdout(list_table) {                            
+                          eprintln!("An error occured while creating the table. {}", err)
+                      }
+
+                },
+                None => {
+                    eprintln!("Given path {} is not a valid path! Exiting...", file_path);
+                    exit(-1);
+                }
             }
+
+
+
         }
     }
+
+}
+
+fn get_path<P>(path: P) -> Option<OsString> where P: AsRef<Path> {
+    let file_path = path.as_ref();
+
+     if !file_path.exists() {
+           let current_dir = match std::env::current_dir() {
+               Ok(path) => path,
+               Err(err) => {
+                   eprintln!("An error occured! Error: {}", err);
+                   return None;
+               }
+           };
+           let file_path = Path::new(current_dir.as_path()).with_file_name(file_path);
+
+           if file_path.exists() {
+               return Some(OsString::from(file_path.as_os_str()));
+           }
+           else {
+               eprintln!(r"Unable to find the given path {:?}", file_path);
+               return None;
+           }
+       }
+       else {
+           return Some(OsString::from(file_path.as_os_str()));
+       }
 
 }
