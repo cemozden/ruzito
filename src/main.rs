@@ -10,7 +10,7 @@ use std::{ffi::{OsString}, path::Path, process::exit};
 
 use clap::{App, AppSettings, Arg, SubCommand};
 use zip::ZipFile;
-use cli_table::{Cell, CellStruct, Table, print_stdout};
+use cli_table::{Cell, CellStruct, Table, format::Justify, print_stdout};
 
 type TableRow = Vec<CellStruct>;
 
@@ -100,8 +100,8 @@ fn main() {
                             vec![
                                 item.item_path().cell(),
                                 format!("{:?} {}", item.compression_method(), compression_perc).cell(),
-                                item.compressed_size().cell(),
-                                item.uncompressed_size().cell(),
+                                item.compressed_size().cell().justify(Justify::Right),
+                                item.uncompressed_size().cell().justify(Justify::Right),
                                 format!("{}", item.modified_date_time()).cell()
                             ]}
                         )
@@ -116,8 +116,11 @@ fn main() {
                         ]);
 
                       if let Err(err) = print_stdout(list_table) {                            
-                          eprintln!("An error occured while creating the table. {}", err)
+                          eprintln!("An error occured while creating the table. {}", err);
+                          exit(-1);
                       }
+
+                      println!("\n{} files/directories listed.\n", zip_file.file_count());
 
                 },
                 None => {
