@@ -10,7 +10,7 @@ mod zip;
 use std::{ffi::{OsString}, path::Path, process::exit};
 
 use clap::{App, AppSettings, Arg, SubCommand};
-use zip::ZipFile;
+use zip::{ZipFile, mem_map::EncryptionMethod};
 use cli_table::{Cell, CellStruct, Table, format::Justify, print_stdout};
 
 type TableRow = Vec<CellStruct>;
@@ -99,10 +99,18 @@ fn main() {
                             }
                             else { String::from("") };
 
+                            let file_protected = if item.encryption_method() == EncryptionMethod::NoEncryption {
+                                "No"
+                            } else {
+                                "Yes"
+                            };
+
+
                             vec![
                                 item.item_path().cell(),
                                 format!("{:?} {}", item.compression_method(), compression_perc).cell(),
                                 item.compressed_size().cell().justify(Justify::Right),
+                                file_protected.cell(),
                                 item.uncompressed_size().cell().justify(Justify::Right),
                                 format!("{}", item.modified_date_time()).cell()
                             ]}
@@ -113,6 +121,7 @@ fn main() {
                           "Item".cell(),
                           "Compression".cell(),
                           "Compressed Size".cell(),
+                          "Password Protected".cell(),
                           "File Size".cell(),
                           "Modified Date".cell()
                         ]);

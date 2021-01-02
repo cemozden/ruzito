@@ -3,7 +3,6 @@ use std::{ffi::OsString, io::{Error, Write}, path::Path, process::exit};
 use self::{encryption::ZipCryptoError, mem_map::EncryptionMethod, zip_item::ZipItem};
 
 
-mod mem_map;
 mod local_file_header;
 mod eof_central_dir;
 mod central_dir_file_header;
@@ -12,6 +11,7 @@ mod date_time;
 mod compression_decoder;
 mod encryption;
 
+pub mod mem_map;
 pub mod zip_item;
 
 #[derive(Debug)]
