@@ -1,7 +1,7 @@
 use std::io::{Error, ErrorKind, SeekFrom};
 use std::io::prelude::*;
 use byteorder::{LittleEndian, ByteOrder};
-use super::mem_map::{ZipVersion, CompressionMethod, FILE_HEADER_SIGNATURE};
+use super::mem_map::{ZipVersion, CompressionMethod, FILE_HEADER_SIGNATURE, EncryptionMethod};
 use super::date_time::ZipDateTime;
 
 #[derive(Debug)]
@@ -9,7 +9,7 @@ pub struct LocalFileHeader {
     signature: u32,
     version_needed_to_extract: ZipVersion,
     general_purpose_flag: u16,
-    file_encrypted: bool,
+    encryption_method: EncryptionMethod,
     compression_method: CompressionMethod,
     last_modified_date_time: ZipDateTime,
     crc32: u32,
@@ -44,9 +44,17 @@ impl LocalFileHeader {
         let compressed_size = LittleEndian::read_u32(&cdf_bytes[18..22]);
         let uncompressed_size = LittleEndian::read_u32(&cdf_bytes[22..26]);
 
-        if general_purpose_flag >> 2 & 1 == 1 {
-            return Err(Error::new(ErrorKind::InvalidData, "Data descriptor is currently not supported."));
-        }
+        let encryption_method = if general_purpose_flag & 0b100001 == 0b100001 {
+                EncryptionMethod::StrongEncryption
+            }
+            else if general_purpose_flag & 0x1 == 1 {
+                EncryptionMethod::ZipCrypto
+            }
+            else { EncryptionMethod::NoEncryption };
+
+            if general_purpose_flag >> 2 & 1 == 1 {
+                return Err(Error::new(ErrorKind::InvalidData, "Data descriptor is currently not supported."));
+            }
 
         reader.read_exact(&mut file_name_bytes)?;
 
@@ -55,7 +63,7 @@ impl LocalFileHeader {
             version_needed_to_extract:  ZipVersion::from_byte(cdf_bytes[4]),
             general_purpose_flag,
             compression_method: CompressionMethod::from_addr(LittleEndian::read_u16(&cdf_bytes[8..10])),
-            file_encrypted: general_purpose_flag & 0x1 == 1,
+            encryption_method,
             last_modified_date_time: ZipDateTime::from_addr(LittleEndian::read_u16(&cdf_bytes[12..14]), LittleEndian::read_u16(&cdf_bytes[10..12])),
             crc32,
             compressed_size,
@@ -72,6 +80,14 @@ impl LocalFileHeader {
 
     pub fn content_start_offset(&self) -> u64 {
         self.content_start_offset
+    }
+
+    pub fn encryption_method(&self) -> &EncryptionMethod {
+        &self.encryption_method
+    }
+
+    pub fn crc32(&self) -> u32 {
+        return self.crc32
     }
 }
 
@@ -100,7 +116,7 @@ mod tests {
 
         assert_eq!(local_file_header.version_needed_to_extract, ZipVersion::from_byte(20));
         assert_eq!(local_file_header.general_purpose_flag, 0);
-        assert_eq!(local_file_header.file_encrypted, false);
+        assert_eq!(local_file_header.encryption_method, EncryptionMethod::NoEncryption);
         assert_eq!(local_file_header.compression_method, CompressionMethod::Deflate);
         assert_eq!(local_file_header.last_modified_date_time, ZipDateTime::new(29, 11, 2020, 23, 49, 40));
         assert_eq!(local_file_header.crc32, 43330767);

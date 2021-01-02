@@ -1,7 +1,7 @@
 use std::io::{ErrorKind, prelude::*};
 use std::io::SeekFrom;
 use std::io::Error;
-use super::mem_map::{HostOS, CENTRAL_DIR_SIGNATURE, ZipVersion, CompressionMethod};
+use super::mem_map::{HostOS, CENTRAL_DIR_SIGNATURE, ZipVersion, CompressionMethod, EncryptionMethod};
 use byteorder::{LittleEndian, ByteOrder};
 use super::date_time::*;
 use super::zip_item::ZipItem;
@@ -13,7 +13,7 @@ pub struct CentralDirectoryFileHeader {
     zip_specification: ZipVersion,
     version_needed_to_extract: ZipVersion,
     general_purpose_flag: u16,
-    file_encrypted: bool,
+    encryption_method: EncryptionMethod,
     compression_method: CompressionMethod,
     last_modified_date_time: ZipDateTime,
     crc32: u32,
@@ -57,13 +57,21 @@ impl CentralDirectoryFileHeader {
         reader.seek(SeekFrom::Current(extra_field_length as i64))?;
         reader.read_exact(&mut file_comment_bytes)?;
 
+        let encryption_method = if general_purpose_flag & 0b100001 == 0b100001 {
+            EncryptionMethod::StrongEncryption
+        }
+        else if general_purpose_flag & 0x1 == 1 {
+            EncryptionMethod::ZipCrypto
+        }
+        else { EncryptionMethod::NoEncryption };
+
         Ok(CentralDirectoryFileHeader {
             signature: CENTRAL_DIR_SIGNATURE,
             host_os: HostOS::from_byte(cdf_bytes[5]),
             zip_specification: ZipVersion::from_byte(cdf_bytes[4]),
             version_needed_to_extract:  ZipVersion::from_byte(cdf_bytes[6]),
             general_purpose_flag,
-            file_encrypted: general_purpose_flag & 0x1 == 1,
+            encryption_method,
             compression_method: CompressionMethod::from_addr(LittleEndian::read_u16(&cdf_bytes[10..12])),
             last_modified_date_time: ZipDateTime::from_addr(LittleEndian::read_u16(&cdf_bytes[14..16]), LittleEndian::read_u16(&cdf_bytes[12..14])),
             crc32: LittleEndian::read_u32(&cdf_bytes[16..20]),
@@ -91,7 +99,8 @@ impl Into<ZipItem> for CentralDirectoryFileHeader {
             self.uncompressed_size,
             self.compressed_size,
             self.last_modified_date_time,
-            self.relative_offset
+            self.relative_offset,
+            self.encryption_method
         )
     }
 }
@@ -128,7 +137,7 @@ mod tests {
         assert_eq!(central_dir_file.zip_specification, ZipVersion::from_byte(63));
         assert_eq!(central_dir_file.version_needed_to_extract, ZipVersion::from_byte(20));
         assert_eq!(central_dir_file.general_purpose_flag, 0);
-        assert_eq!(central_dir_file.file_encrypted, false);
+        assert_eq!(central_dir_file.encryption_method, EncryptionMethod::NoEncryption);
         assert_eq!(central_dir_file.compression_method, CompressionMethod::Deflate);
         assert_eq!(central_dir_file.last_modified_date_time, ZipDateTime::new(28, 2, 2020, 12, 32, 32));
         assert_eq!(central_dir_file.crc32, 1592220865);

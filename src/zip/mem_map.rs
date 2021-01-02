@@ -58,6 +58,13 @@ impl HostOS {
 
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum EncryptionMethod {
+    NoEncryption,
+    ZipCrypto,
+    StrongEncryption
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct ZipVersion {
     major: u8,

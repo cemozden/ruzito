@@ -3,6 +3,7 @@ extern crate byteorder;
 extern crate inflate;
 extern crate crc;
 extern crate cli_table;
+extern crate rpassword;
 
 mod zip;
 
@@ -15,6 +16,7 @@ use cli_table::{Cell, CellStruct, Table, format::Justify, print_stdout};
 type TableRow = Vec<CellStruct>;
 
 fn main() {
+
     let matches = App::new("ruzito")
         .version("1.0.0")
         .author("Cem Ozden <cemozden93@outlook.com>")
