@@ -3,6 +3,8 @@ use std::num::Wrapping;
 use std::io::{Read, Error};
 use byteorder::{ByteOrder, BigEndian};
 
+pub mod WinZipAes;
+
 const PKZIP_INITIAL_KEY_1: u32 = 0x12345678;
 const PKZIP_INITIAL_KEY_2: u32 = 0x23456789;
 const PKZIP_INITIAL_KEY_3: u32 = 0x34567890;
@@ -105,6 +107,11 @@ impl<R: Read> Read for ZipCryptoEncryptionReader<R> {
 mod tests {
     use std::io::Cursor;
     use super::*;
+    use byteorder::{LittleEndian, WriteBytesExt};
+    use crypto::pbkdf2::*;
+    use crypto::hmac::Hmac;
+    use crypto::sha1::Sha1;
+    use crypto::aes::ctr;
 
     #[test]
     fn should_yield_error_if_password_is_wrong() {
@@ -128,6 +135,33 @@ mod tests {
         let _ = zip_crypto_encryption_reader.read(&mut buf);
         
         assert_eq!(buf, [0xB5, 0x5B, 0x4B, 0x72]);
+    }
+
+    #[test]
+    fn test() {
+        let salt: [u8; 16] = [0x74, 0x68, 0x4C, 0x2D, 0x34, 0x98, 0xB2, 0x43, 0xC2, 0xD5, 0xFF, 0x26, 0x6F, 0x01, 0x60, 0x41];
+        let rounds = 1000;
+      
+        //dkLen = 32 * 2 + 2
+        let mut key = [0; 66];
+
+        pbkdf2(&mut Hmac::new(Sha1::new(), b"123456"), &salt, rounds, &mut key);
+
+        println!("{:x?}", &key[64..66]);
+        let encryption_key = &key[..32];
+        let encryption_mac_key = &key[32..64];
+
+        let encrypted_data = [0, 0, 0, 0xB2, 0x7E, 0x34];
+        let mut result = [0; 6];
+
+        //let mut hmac = Hmac::new(Sha1::new(), encryption_mac_key);
+
+        let iv = [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let mut aes = ctr(crypto::aes::KeySize::KeySize256, encryption_key, &iv);
+        
+        aes.process(&encrypted_data, &mut result);
+        
+        println!("{:x?}", &result);
     }
 
 }

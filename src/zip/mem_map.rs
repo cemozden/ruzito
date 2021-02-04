@@ -74,7 +74,6 @@ pub struct ZipVersion {
 impl ZipVersion {
 
     pub fn from_byte(byte: u8) -> Self {
-
         let major = byte / 10;
         let minor = byte % 10;
 
@@ -82,7 +81,6 @@ impl ZipVersion {
             major,
             minor
         }
-
     }
 }
 
@@ -148,6 +146,25 @@ impl CompressionMethod {
             98 => CompressionMethod::PPMd,
             99 => CompressionMethod::Aex,
             _ => CompressionMethod::Unknown
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum AesEncryptionStrength {
+    Aes128,
+    Aes192,
+    Aes256,
+    Unknown
+}
+
+impl AesEncryptionStrength {
+    pub fn from_byte(strength: u8) -> Self {
+        match strength {
+            0x1 => AesEncryptionStrength::Aes128,
+            0x2 => AesEncryptionStrength::Aes192,
+            0x3 => AesEncryptionStrength::Aes256,
+              _ => AesEncryptionStrength::Unknown
         }
     }
 }

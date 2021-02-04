@@ -4,11 +4,12 @@ extern crate inflate;
 extern crate crc;
 extern crate cli_table;
 extern crate rpassword;
+extern crate crypto;
+extern crate aes_ctr;
 
 mod zip;
 
 use std::{ffi::{OsString}, path::Path, process::exit};
-
 use clap::{App, AppSettings, Arg, SubCommand};
 use zip::{ZipFile, mem_map::EncryptionMethod};
 use cli_table::{Cell, CellStruct, Table, format::Justify, print_stdout};
