@@ -1,6 +1,6 @@
 use std::{fs::File, io::{BufReader, BufWriter, Read, Seek, SeekFrom}, path::Path};
 
-use super::{ExtractError, compression_decoder, date_time::ZipDateTime, encryption::{ZipCryptoEncryptionReader, ZipCryptoError}, local_file_header, mem_map::{CompressionMethod, EncryptionMethod}, read_pass};
+use super::{ExtractError, compression_decoder, date_time::ZipDateTime, encryption::{winzip_aes::{WinZipAesEncryptionReader, WinZipAesError}, ZipCryptoEncryptionReader, ZipCryptoError}, local_file_header, mem_map::{CompressionMethod, EncryptionMethod}, read_pass};
 
 #[derive(Debug)]
 pub struct ZipItem {
@@ -102,10 +102,8 @@ impl ZipItem {
                     
                     zip_file_reader.seek(SeekFrom::Start(content_start_offset)).map_err(|_| ExtractError::UnableToSeekZipItem(file_start_offset))?;
                     
-                    let content_reader = zip_file_reader.take(self.compressed_size() as u64);
-                    
                     let mut decompression_reader: Box<dyn Read> = match local_file_header.encryption_method() {
-                       EncryptionMethod::NoEncryption => Box::new(content_reader),
+                       EncryptionMethod::NoEncryption => Box::new(zip_file_reader.take(self.compressed_size() as u64)),
                        EncryptionMethod::ZipCrypto => { 
                            let zip_password = if let Some(pass) = password {
                                pass.clone()
@@ -117,6 +115,7 @@ impl ZipItem {
                                 }
                            };
 
+                           let content_reader = zip_file_reader.take(self.compressed_size() as u64);
                            let zip_crypto_reader = ZipCryptoEncryptionReader::new(zip_password, local_file_header.crc32(), content_reader);
 
                            match zip_crypto_reader {
@@ -125,7 +124,27 @@ impl ZipItem {
                            }
 
                         },
-                       EncryptionMethod::StrongEncryption => Box::new(content_reader)
+                       EncryptionMethod::WinZipAesEncryption => {
+                           let zip_password = if let Some(pass) = password {
+                               pass.clone()
+                           }
+                           else {
+                                match read_pass() {
+                                    Ok(pass) => pass,
+                                    Err(err) => return Err(ExtractError::WinZipAesError(WinZipAesError::IOError(err)))
+                                }
+                           };
+                           
+                           let content_reader = zip_file_reader.take(self.compressed_size() as u64 - 10);
+                           let winzip_aes_reader = WinZipAesEncryptionReader::new(zip_password, &[0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0], content_reader);
+
+                           match winzip_aes_reader {
+                               Ok(reader) => Box::new(reader),
+                               Err(err) => return Err(ExtractError::WinZipAesError(err))
+                           }
+
+                        },
+                        _ => Box::new(zip_file_reader.take(self.compressed_size() as u64))
                     };
 
                     compression_decoder::CompressionDecoder::decode_to_file(local_file_header.compression_method(), 

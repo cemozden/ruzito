@@ -58,7 +58,7 @@ impl CentralDirectoryFileHeader {
         reader.read_exact(&mut file_comment_bytes)?;
 
         let encryption_method = if general_purpose_flag & 0b100001 == 0b100001 {
-            EncryptionMethod::StrongEncryption
+            EncryptionMethod::WinZipAesEncryption
         }
         else if general_purpose_flag & 0x1 == 1 {
             EncryptionMethod::ZipCrypto

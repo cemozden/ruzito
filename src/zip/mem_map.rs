@@ -62,6 +62,7 @@ impl HostOS {
 pub enum EncryptionMethod {
     NoEncryption,
     ZipCrypto,
+    WinZipAesEncryption,
     StrongEncryption
 }
 

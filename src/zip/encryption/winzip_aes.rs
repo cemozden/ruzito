@@ -18,12 +18,11 @@ pub enum WinZipAesError {
 }
 
 pub struct WinZipAesEncryptionReader<R: Read> {
-    encryption_strength: AesEncryptionStrength,
     reader: Box<R>,
     encryption_key: Vec<u8>,
     auth_code: [u8; 10],
-    pub ctr: u32,
-    pub ctr_bytes_remaining: usize,
+    ctr: u32,
+    ctr_bytes_remaining: usize,
     key_size: KeySize,
     iv: Vec<u8>
 }
@@ -36,9 +35,9 @@ impl<R: Read> WinZipAesEncryptionReader<R> {
         if extra_field_length < AES_EXTRA_FIELD_SIZE {
             return Err(WinZipAesError::ExtraFieldSizeError(extra_field_length))
         }
-
         let encryption_strength_byte = zip_item_extra_field[8];
         let encryption_strength = AesEncryptionStrength::from_byte(encryption_strength_byte);
+
         let salt_size = match encryption_strength {
             AesEncryptionStrength::Aes128 => 8usize,
             AesEncryptionStrength::Aes192 => 12,
@@ -66,7 +65,6 @@ impl<R: Read> WinZipAesEncryptionReader<R> {
         //TODO: Set reader with take option. That is, read until authentication_code
 
         let mut self_obj = WinZipAesEncryptionReader {
-            encryption_strength,
             reader: Box::new(reader),
             encryption_key: Vec::new(),
             auth_code: [0; 10],

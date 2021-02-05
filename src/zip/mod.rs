@@ -1,6 +1,6 @@
 use std::{ffi::OsString, io::{Error, Write}, path::Path, process::exit};
 
-use self::{encryption::ZipCryptoError, mem_map::EncryptionMethod, zip_item::ZipItem};
+use self::{encryption::{ZipCryptoError, winzip_aes::WinZipAesError}, mem_map::EncryptionMethod, zip_item::ZipItem};
 
 
 mod local_file_header;
@@ -26,7 +26,8 @@ pub enum ExtractError {
     FileCreationFailed,
     UnableToSeekZipItem(u32),
     IOError(std::io::Error),
-    ZipCryptoError(ZipCryptoError)
+    ZipCryptoError(ZipCryptoError),
+    WinZipAesError(WinZipAesError)
 }
 
 #[derive(Debug)]
@@ -128,6 +129,17 @@ impl ZipFile {
                                 exit(-1);
                             },
                             ZipCryptoError::IOError(err) => eprintln!("I/O error occured while decrypting the file! {}", err)
+                        }
+                    },
+                    ExtractError::WinZipAesError(err) => {
+                        match err {
+                            WinZipAesError::InvalidPassword(_) => { 
+                                eprintln!("Incorrect Password. Exiting.."); 
+                                exit(-1);
+                            },
+                            WinZipAesError::IOError(err) => eprintln!("I/O error occured while decrypting the file! {}", err),
+                            _ => eprintln!("Error")
+                            //TODO HERE
                         }
                     }
                 }

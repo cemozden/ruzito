@@ -3,7 +3,7 @@ use std::num::Wrapping;
 use std::io::{Read, Error};
 use byteorder::{ByteOrder, BigEndian};
 
-pub mod WinZipAes;
+pub mod winzip_aes;
 
 const PKZIP_INITIAL_KEY_1: u32 = 0x12345678;
 const PKZIP_INITIAL_KEY_2: u32 = 0x23456789;
@@ -107,7 +107,6 @@ impl<R: Read> Read for ZipCryptoEncryptionReader<R> {
 mod tests {
     use std::io::Cursor;
     use super::*;
-    use byteorder::{LittleEndian, WriteBytesExt};
     use crypto::pbkdf2::*;
     use crypto::hmac::Hmac;
     use crypto::sha1::Sha1;
@@ -149,7 +148,7 @@ mod tests {
 
         println!("{:x?}", &key[64..66]);
         let encryption_key = &key[..32];
-        let encryption_mac_key = &key[32..64];
+//        let encryption_mac_key = &key[32..64];
 
         let encrypted_data = [0, 0, 0, 0xB2, 0x7E, 0x34];
         let mut result = [0; 6];

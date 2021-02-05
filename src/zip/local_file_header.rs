@@ -43,13 +43,14 @@ impl LocalFileHeader {
         let crc32 = LittleEndian::read_u32(&cdf_bytes[14..18]);
         let compressed_size = LittleEndian::read_u32(&cdf_bytes[18..22]);
         let uncompressed_size = LittleEndian::read_u32(&cdf_bytes[22..26]);
-
+        let compression_method = CompressionMethod::from_addr(LittleEndian::read_u16(&cdf_bytes[8..10]));
         let encryption_method = if general_purpose_flag & 0b100001 == 0b100001 {
                 EncryptionMethod::StrongEncryption
             }
-            else if general_purpose_flag & 0x1 == 1 {
+            else if general_purpose_flag & 0x1 == 1 && compression_method != CompressionMethod::Aex {
                 EncryptionMethod::ZipCrypto
             }
+            else if compression_method == CompressionMethod::Aex { EncryptionMethod::WinZipAesEncryption }
             else { EncryptionMethod::NoEncryption };
 
             if general_purpose_flag >> 2 & 1 == 1 {
@@ -62,7 +63,7 @@ impl LocalFileHeader {
             signature: FILE_HEADER_SIGNATURE,
             version_needed_to_extract:  ZipVersion::from_byte(cdf_bytes[4]),
             general_purpose_flag,
-            compression_method: CompressionMethod::from_addr(LittleEndian::read_u16(&cdf_bytes[8..10])),
+            compression_method,
             encryption_method,
             last_modified_date_time: ZipDateTime::from_addr(LittleEndian::read_u16(&cdf_bytes[12..14]), LittleEndian::read_u16(&cdf_bytes[10..12])),
             crc32,
