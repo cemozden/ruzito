@@ -99,7 +99,7 @@ impl<R: Read> Read for WinZipAesEncryptionReader<R> {
 
         let encrypted_buffer_len = self.reader.read(buf)?;
         let mut bytes_decrypted = 0usize;
-        
+
         if encrypted_buffer_len == 0 {
             return Ok(encrypted_buffer_len)
         }
@@ -184,26 +184,25 @@ impl<R: Read> Read for WinZipAesEncryptionReader<R> {
                 (0..ctr_cycle).into_iter()
                     .for_each(|index| {
                         let buffer_slice_start_index = index * AES_CTR_BUFFER_SIZE;
-                        let buffer_slice_end_index = buffer_slice_start_index + 16;
+                        let buffer_slice_end_index = buffer_slice_start_index + AES_CTR_BUFFER_SIZE;
                         let mut buffer_to_decrypt = &buf[buffer_slice_start_index..buffer_slice_end_index];
-                        let buffer_len = buffer_to_decrypt.len();
                         let mut decrypted_buffer = [0; AES_CTR_BUFFER_SIZE];
                         let mut aes_ctr = ctr(self.key_size, &self.encryption_key, &self.iv); 
 
                         aes_ctr.process(&mut buffer_to_decrypt, &mut decrypted_buffer);
                             
-                        (bytes_decrypted..buffer_len).into_iter()
-                            .for_each(|index| buf[buffer_slice_start_index + index] = decrypted_buffer[buffer_slice_start_index + index]);
+                        (0..AES_CTR_BUFFER_SIZE).into_iter()
+                            .for_each(|index| buf[buffer_slice_start_index + index] = decrypted_buffer[index]);
                             
                         self.ctr += 1;
                         LittleEndian::write_u32(&mut self.iv, self.ctr);
                             
-                        bytes_decrypted += buffer_len;
+                        bytes_decrypted += AES_CTR_BUFFER_SIZE;
                     });
 
                 if bytes_to_decrypt_later > 0 {
                     let buffer_size = encrypted_buffer_len - bytes_to_decrypt_later;
-                    let mut buffer_to_decrypt = &buf[buffer_size..];
+                    let mut buffer_to_decrypt = &buf[buffer_size..encrypted_buffer_len];
                     let buffer_len = buffer_to_decrypt.len();
                     let mut decrypted_buffer = vec![0; bytes_to_decrypt_later];
                     let mut aes_ctr = ctr(self.key_size, &self.encryption_key, &self.iv); 

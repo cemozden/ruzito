@@ -14,7 +14,8 @@ impl CompressionDecoder {
                 std::io::copy(&mut deflate_decoder, writer)
             },
             CompressionMethod::Aex => {
-                std::io::copy(reader, writer)
+                let mut deflate_decoder = DeflateDecoder::new(reader);
+                std::io::copy(&mut deflate_decoder, writer)
             }
             _ => Err(Error::new(ErrorKind::InvalidInput, "Unknown Compression Method"))
         }
