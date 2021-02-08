@@ -2,7 +2,7 @@ use std::{fs::File, io::{BufReader, BufWriter, Read, Seek, SeekFrom}, path::Path
 
 use byteorder::{ByteOrder, LittleEndian};
 
-use super::{ExtractError, compression_decoder, date_time::ZipDateTime, encryption::{winzip_aes::{WinZipAesEncryptionReader, WinZipAesError}, zip_crypto::{ZipCryptoEncryptionReader, ZipCryptoError}}, local_file_header, mem_map::{CompressionMethod, EncryptionMethod}, read_pass};
+use super::{ExtractError, compression_decoder, date_time::ZipDateTime, encryption::{winzip_aes::{WinZipAesReader, WinZipAesError}, zip_crypto::{ZipCryptoReader, ZipCryptoError}}, local_file_header, mem_map::{CompressionMethod, EncryptionMethod}, read_pass};
 
 const WINZIP_AES_EXTRA_FIELD_LENGTH: u16 = 11;
 #[derive(Debug)]
@@ -124,7 +124,7 @@ impl ZipItem {
                            };
 
                            let content_reader = zip_file_reader.take(self.compressed_size() as u64);
-                           let zip_crypto_reader = ZipCryptoEncryptionReader::new(zip_password, local_file_header.crc32(), content_reader);
+                           let zip_crypto_reader = ZipCryptoReader::new(zip_password, local_file_header.crc32(), content_reader);
 
                            match zip_crypto_reader {
                                Ok(reader) => Box::new(reader),
@@ -155,7 +155,7 @@ impl ZipItem {
                            compression_method = &actual_compression_method;
 
                            let content_reader = zip_file_reader.take(self.compressed_size() as u64 - 10);
-                           let winzip_aes_reader = WinZipAesEncryptionReader::new(zip_password, extra_field, content_reader);
+                           let winzip_aes_reader = WinZipAesReader::new(zip_password, extra_field, content_reader);
 
                            match winzip_aes_reader {
                                Ok(reader) => Box::new(reader),

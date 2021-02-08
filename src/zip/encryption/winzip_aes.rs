@@ -17,7 +17,7 @@ pub enum WinZipAesError {
     InvalidPassword(String)
 }
 
-pub struct WinZipAesEncryptionReader<R: Read> {
+pub struct WinZipAesReader<R: Read> {
     reader: Box<R>,
     encryption_key: Vec<u8>,
     auth_code: [u8; 10],
@@ -27,7 +27,7 @@ pub struct WinZipAesEncryptionReader<R: Read> {
     iv: Vec<u8>
 }
 
-impl<R: Read> WinZipAesEncryptionReader<R> {
+impl<R: Read> WinZipAesReader<R> {
     pub fn new(password: String, zip_item_extra_field: &[u8], reader: R) -> Result<Self, WinZipAesError> {
 
         let extra_field_length = zip_item_extra_field.len();
@@ -64,7 +64,7 @@ impl<R: Read> WinZipAesEncryptionReader<R> {
 
         //TODO: Set reader with take option. That is, read until authentication_code
 
-        let mut self_obj = WinZipAesEncryptionReader {
+        let mut self_obj = WinZipAesReader {
             reader: Box::new(reader),
             encryption_key: Vec::new(),
             auth_code: [0; 10],
@@ -94,7 +94,7 @@ impl<R: Read> WinZipAesEncryptionReader<R> {
     }
 }
 
-impl<R: Read> Read for WinZipAesEncryptionReader<R> {
+impl<R: Read> Read for WinZipAesReader<R> {
     fn read(&mut self, mut buf: &mut [u8]) -> std::io::Result<usize> {
 
         let encrypted_buffer_len = self.reader.read(buf)?;
@@ -239,7 +239,7 @@ mod tests {
         let reader = Cursor::new(
             vec![0x74, 0x68, 0x4C, 0x2D, 0x34, 0x98, 0xB2, 0x43, 0xC2, 0xD5, 0xFF, 0x26, 0x6F, 0x01, 0x60, 0x41, 0x8A, 0x34, 0x51, 0x32, 0x3A, 0x0D, 0xAB, 0xF5, 0xF6, 0x58, 0xA6, 0xA0, 0xCB, 0x08, 0x90, 0x62, 0xAA, 0xBB, 0x10, 0x6D, 0xF6, 0x62]
         );
-        let mut winzip_aes_reader = WinZipAesEncryptionReader::new(String::from("123456"), &zip_item_extra_field, reader).unwrap();
+        let mut winzip_aes_reader = WinZipAesReader::new(String::from("123456"), &zip_item_extra_field, reader).unwrap();
 
         let count = winzip_aes_reader.read(&mut buf).unwrap();
         let count2 = winzip_aes_reader.read(&mut buf2).unwrap();

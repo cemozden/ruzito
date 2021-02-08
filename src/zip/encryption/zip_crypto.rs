@@ -8,7 +8,7 @@ const PKZIP_INITIAL_KEY_2: u32 = 0x23456789;
 const PKZIP_INITIAL_KEY_3: u32 = 0x34567890;
 const ZIP_CRYPTO_POLYNOMIAL: u32 = 0xEDB88320;
 
-pub struct ZipCryptoEncryptionReader<R: Read> {
+pub struct ZipCryptoReader<R: Read> {
     key1: Wrapping<u32>,
     key2: Wrapping<u32>,
     key3: Wrapping<u32>,
@@ -22,7 +22,7 @@ pub enum ZipCryptoError {
     IOError(Error)
 }
 
-impl<R: Read> ZipCryptoEncryptionReader<R> {
+impl<R: Read> ZipCryptoReader<R> {
     pub fn new(password: String, file_crc: u32, reader: R) -> Result<Self, ZipCryptoError> {
         let polynomial_table = make_table(ZIP_CRYPTO_POLYNOMIAL);
 
@@ -91,7 +91,7 @@ impl<R: Read> ZipCryptoEncryptionReader<R> {
     }
 }
 
-impl<R: Read> Read for ZipCryptoEncryptionReader<R> {
+impl<R: Read> Read for ZipCryptoReader<R> {
     fn read(&mut self, mut buf: &mut [u8]) -> std::io::Result<usize> {
 
         let read_result = self.reader.read(&mut buf);
@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn should_yield_error_if_password_is_wrong() {
         let cursor = Cursor::new([0xD0, 0x66, 0x78, 0x57, 0xA6, 0xC0, 0x45, 0x75, 0x7B, 0x0F, 0x77, 0x8F, 0x36, 0x53, 0x9b, 0x6f, 0xAC]);
-        let zip_crypto_encryption_reader = ZipCryptoEncryptionReader::new(String::from("1234567"), 
+        let zip_crypto_encryption_reader = ZipCryptoReader::new(String::from("1234567"), 
         0x2952CCF, 
         cursor);
 
@@ -119,7 +119,7 @@ mod tests {
     #[test]
     fn should_yield_zip_crypto_reader_if_password_is_correct() {
         let cursor = Cursor::new([0xD0, 0x66, 0x78, 0x57, 0xA6, 0xC0, 0x45, 0x75, 0x7B, 0x0F, 0x77, 0x8F, 0x36, 0x53, 0x9b, 0x6f, 0xAC]);
-        let mut zip_crypto_encryption_reader = ZipCryptoEncryptionReader::new(String::from("123456"), 
+        let mut zip_crypto_encryption_reader = ZipCryptoReader::new(String::from("123456"), 
         0x2952CCF, 
         cursor).unwrap();
 
