@@ -1,6 +1,6 @@
 use std::{ffi::OsString, io::{Error, Write}, path::Path, process::exit};
 
-use self::{encryption::{ZipCryptoError, winzip_aes::WinZipAesError}, mem_map::EncryptionMethod, zip_item::ZipItem};
+use self::{encryption::{zip_crypto::ZipCryptoError, winzip_aes::WinZipAesError}, mem_map::EncryptionMethod, zip_item::ZipItem};
 
 
 mod local_file_header;
@@ -138,8 +138,8 @@ impl ZipFile {
                                 exit(-1);
                             },
                             WinZipAesError::IOError(err) => eprintln!("I/O error occured while decrypting the file! {}", err),
-                            _ => eprintln!("Error")
-                            //TODO HERE
+                            WinZipAesError::ExtraFieldSizeError(field_size) => eprintln!("Extra field size of the encrypted file is less than expected! Field Size: {}", field_size),
+                            WinZipAesError::UnknownEncryptionStrength(encryption_strength) => eprintln!("Unknown encryption strength for WinZip AES Encryption! Strength byte given: {}", encryption_strength)
                         }
                     }
                 }
