@@ -109,6 +109,7 @@ impl ZipItem {
                     // That is, we'll change the value of this variable if the encryption method is AES encrpytion.
                     let mut compression_method = local_file_header.compression_method();
                     let actual_compression_method: CompressionMethod;
+                    let mut auth_code = [0; 32];
                     
                     let mut decompression_reader: Box<dyn Read> = match local_file_header.encryption_method() {
                        EncryptionMethod::NoEncryption => Box::new(zip_file_reader.take(self.compressed_size() as u64)),
@@ -155,7 +156,7 @@ impl ZipItem {
                            compression_method = &actual_compression_method;
 
                            let content_reader = zip_file_reader.take(self.compressed_size() as u64 - 10);
-                           let winzip_aes_reader = WinZipAesReader::new(zip_password, extra_field, content_reader);
+                           let winzip_aes_reader = WinZipAesReader::new(zip_password, extra_field, &mut auth_code, content_reader);
 
                            match winzip_aes_reader {
                                Ok(reader) => Box::new(reader),
@@ -170,7 +171,6 @@ impl ZipItem {
                             &mut decompression_reader, 
                             &mut buf_writer)
                                 .map_err(|err| ExtractError::IOError(err))?;
-
                     Ok(Box::new(item_extract_dest_path))
                 }
             },
