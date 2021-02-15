@@ -4,8 +4,6 @@ extern crate inflate;
 extern crate crc;
 extern crate cli_table;
 extern crate rpassword;
-extern crate crypto;
-extern crate aes_ctr;
 
 mod zip;
 
