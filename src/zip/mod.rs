@@ -1,6 +1,6 @@
 use std::{ffi::OsString, io::{Error, Write}, path::Path, process::exit};
 
-use self::{encryption::{zip_crypto::ZipCryptoError, winzip_aes::WinZipAesError}, mem_map::EncryptionMethod, zip_item::ZipItem};
+use self::{encryption::{zip_crypto::ZipCryptoError}, mem_map::EncryptionMethod, zip_item::ZipItem};
 
 
 mod local_file_header;
@@ -27,7 +27,6 @@ pub enum ExtractError {
     UnableToSeekZipItem(u32),
     IOError(std::io::Error),
     ZipCryptoError(ZipCryptoError),
-    WinZipAesError(WinZipAesError)
 }
 
 #[derive(Debug)]
@@ -129,17 +128,6 @@ impl ZipFile {
                                 exit(-1);
                             },
                             ZipCryptoError::IOError(err) => eprintln!("I/O error occured while decrypting the file! {}", err)
-                        }
-                    },
-                    ExtractError::WinZipAesError(err) => {
-                        match err {
-                            WinZipAesError::InvalidPassword(_) => { 
-                                eprintln!("Incorrect Password. Exiting.."); 
-                                exit(-1);
-                            },
-                            WinZipAesError::IOError(err) => eprintln!("I/O error occured while decrypting the file! {}", err),
-                            WinZipAesError::ExtraFieldSizeError(field_size) => eprintln!("Extra field size of the encrypted file is less than expected! Field Size: {}", field_size),
-                            WinZipAesError::UnknownEncryptionStrength(encryption_strength) => eprintln!("Unknown encryption strength for WinZip AES Encryption! Strength byte given: {}", encryption_strength)
                         }
                     }
                 }

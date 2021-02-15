@@ -99,14 +99,6 @@ impl LocalFileHeader {
     pub fn crc32(&self) -> u32 {
         return self.crc32
     }
-
-    pub fn extra_field(&self) -> &[u8] {
-        &self.extra_field
-    }
-
-    pub fn extra_field_length(&self) -> u16 {
-        self.extra_field_length
-    }
 }
 
 #[cfg(test)]
