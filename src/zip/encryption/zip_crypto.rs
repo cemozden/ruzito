@@ -74,6 +74,13 @@ impl<R: Read> ZipCryptoReader<R> {
         temp
     }
 
+    fn encrypt_byte(&mut self, char_byte: u8) -> u8 {
+        let cipher_byte = self.stream_byte() ^ char_byte;
+        self.update_keys(char_byte);
+
+        cipher_byte
+    }
+
     fn update_keys(&mut self, ch: u8) {
         
         self.key1 = self.crc32(self.key1, ch);

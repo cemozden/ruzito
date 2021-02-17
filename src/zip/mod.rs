@@ -100,14 +100,17 @@ impl ZipFile {
     }
 
     pub fn extract_all(&mut self) {
+        let encrypted_zip_file_exist = self.zip_items.iter().filter(|item| item.encryption_method() != EncryptionMethod::NoEncryption).count() > 0;
         let mut item_iterator = self.zip_items.iter_mut();
 
-        let zip_password = match self.file_encryption_method {
-            EncryptionMethod::NoEncryption => None,
-            _ => match read_pass() {
+        let zip_password = if encrypted_zip_file_exist {
+            match read_pass() {
                 Ok(pass) => Some(pass),
                 Err(_) => None
             }
+        }
+        else {
+            None
         };
 
         while let Some(item) = item_iterator.next() {

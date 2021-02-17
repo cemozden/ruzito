@@ -54,7 +54,6 @@ impl ZipItem {
         self.encryption_method
     }
 
-
     pub fn extract<P>(&self, password: &Option<String>, dest_path: P) -> Result<Box<dyn AsRef<Path>>, ExtractError> where P: AsRef<Path> {
 
         match dest_path.as_ref().parent() {
