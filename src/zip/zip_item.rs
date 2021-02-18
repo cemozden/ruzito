@@ -11,12 +11,13 @@ pub struct ZipItem {
     compression_method: CompressionMethod,
     modified_date_time: ZipDateTime,
     start_offset: u32,
-    encryption_method: EncryptionMethod
+    encryption_method: EncryptionMethod,
+    crc32: u32
 
 }
 impl ZipItem {
 
-    pub fn new(compression_method: CompressionMethod, item_path: String, uncompressed_size: u32, compressed_size: u32, modified_date_time: ZipDateTime, start_offset: u32, encryption_method: EncryptionMethod) -> Self {
+    pub fn new(compression_method: CompressionMethod, item_path: String, uncompressed_size: u32, compressed_size: u32, modified_date_time: ZipDateTime, start_offset: u32, encryption_method: EncryptionMethod, crc32: u32) -> Self {
         let is_file = !item_path.ends_with("/"); 
         Self {
             compression_method,
@@ -26,7 +27,8 @@ impl ZipItem {
             compressed_size,
             modified_date_time,
             start_offset,
-            encryption_method
+            encryption_method,
+            crc32
         }
     }
 
@@ -36,6 +38,10 @@ impl ZipItem {
 
     pub fn is_file(&self) -> bool {
         self.is_file
+    }
+
+    pub fn crc32(&self) -> u32 {
+        self.crc32
     }
 
     pub fn uncompressed_size(&self) -> u32 {

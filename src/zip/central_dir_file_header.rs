@@ -100,7 +100,8 @@ impl Into<ZipItem> for CentralDirectoryFileHeader {
             self.compressed_size,
             self.last_modified_date_time,
             self.relative_offset,
-            self.encryption_method
+            self.encryption_method,
+            self.crc32
         )
     }
 }
