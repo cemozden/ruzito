@@ -1,7 +1,7 @@
-use std::{ffi::OsString, io::{Error, Write}, path::Path, process::exit};
+use std::{ffi::OsString, path::Path, process::exit};
 
 
-use self::{encryption::{zip_crypto::ZipCryptoError}, mem_map::EncryptionMethod, zip_item::ZipItem};
+use self::{encryption::{zip_crypto::ZipCryptoError}, mem_map::EncryptionMethod, options::ExtractOptions, zip_item::ZipItem};
 
 
 mod local_file_header;
@@ -13,6 +13,7 @@ mod compression_decoder;
 mod encryption;
 mod crc32;
 
+pub mod options;
 pub mod mem_map;
 pub mod zip_item;
 
@@ -39,20 +40,6 @@ pub struct ZipFile {
     zip_items: Vec<zip_item::ZipItem>,
     zip_file_path: OsString,
     file_encryption_method: EncryptionMethod
-}
-
-#[inline]
-pub fn read_pass() -> Result<String, Error> {
-    print!("Enter password: ");
-    if let Err(err) = std::io::stdout().flush() {
-        return Err(err)
-    }
-    let pass = match rpassword::read_password() {
-        Ok(pass) => pass,
-        Err(err) => return Err(err)
-    };
-
-    Ok(pass)
 }
 
 pub struct ZipFileIntoIterator<'a> {
@@ -82,7 +69,12 @@ impl ZipFile {
             .collect();
 
         let file_encryption_method = if zip_items.len() > 0 {
-            zip_items[0].encryption_method()
+            if let Some(zip_item) = zip_items.iter().find(|zip_item| zip_item.encryption_method() != EncryptionMethod::NoEncryption) {
+                zip_item.encryption_method()
+            }
+            else {
+                EncryptionMethod::NoEncryption
+            }
         } else {
             EncryptionMethod::NoEncryption
         };
@@ -95,23 +87,12 @@ impl ZipFile {
         })
     }
 
-    pub fn extract_all(&mut self) {
-        let encrypted_zip_file_exist = self.zip_items.iter().filter(|item| item.encryption_method() != EncryptionMethod::NoEncryption).count() > 0;
+    pub fn extract_all(&mut self, options: ExtractOptions) {
         let mut item_iterator = self.zip_items.iter_mut();
-
-        let zip_password = if encrypted_zip_file_exist {
-            match read_pass() {
-                Ok(pass) => Some(pass),
-                Err(_) => None
-            }
-        }
-        else {
-            None
-        };
 
         while let Some(item) = item_iterator.next() {
             let zip_file_path = &self.zip_file_path;
-            let item_extract_result = item.extract(&zip_password, zip_file_path);
+            let item_extract_result = item.extract(&options);
             let is_file = item.is_file();
 
             match item_extract_result {
@@ -165,6 +146,10 @@ impl ZipFile {
 
     pub fn zip_file_path(&self) -> &OsString {
         &self.zip_file_path
+    }
+
+    pub fn file_encryption_method(&self) -> &EncryptionMethod {
+        &self.file_encryption_method
     }
 
     pub fn iter<'a>(&'a self) -> ZipFileIntoIterator<'a> {

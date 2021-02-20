@@ -1,6 +1,6 @@
 use std::{fs::File, io::{BufReader, BufWriter, Read, Seek, SeekFrom}, path::Path};
 
-use super::{ExtractError, compression_decoder, date_time::ZipDateTime, encryption::zip_crypto::{ZipCryptoReader, ZipCryptoError}, local_file_header, mem_map::{CompressionMethod, EncryptionMethod}, read_pass};
+use super::{ExtractError, compression_decoder, date_time::ZipDateTime, options::ExtractOptions, encryption::zip_crypto::{ZipCryptoReader, ZipCryptoError}, local_file_header, mem_map::{CompressionMethod, EncryptionMethod}};
 
 #[derive(Debug)]
 pub struct ZipItem {
@@ -60,9 +60,11 @@ impl ZipItem {
         self.encryption_method
     }
 
-    pub fn extract<P>(&self, password: &Option<String>, dest_path: P) -> Result<Box<dyn AsRef<Path>>, ExtractError> where P: AsRef<Path> {
+    pub fn extract(&self, options: &ExtractOptions) -> Result<Box<dyn AsRef<Path>>, ExtractError> {
 
-        match dest_path.as_ref().parent() {
+        let dest_path = Path::new(options.destination_path());
+
+        match dest_path.parent() {
             Some(parent_path) => {
                 let item_path = Some(&self.item_path)
                     .filter(|_| cfg!(windows))
@@ -70,7 +72,10 @@ impl ZipItem {
                     .unwrap_or(String::from(&self.item_path));
 
                 let item_extract_dest_path = Path::new(parent_path).join(item_path);
-                println!("{}", item_extract_dest_path.display());
+                
+                if options.verbose_mode() {
+                    println!("{}", item_extract_dest_path.display());
+                }
 
                 if !self.is_file() {
                     match std::fs::create_dir_all(item_extract_dest_path.clone()) {
@@ -111,15 +116,11 @@ impl ZipItem {
                     let mut decompression_reader: Box<dyn Read> = match local_file_header.encryption_method() {
                        EncryptionMethod::NoEncryption => Box::new(zip_file_reader.take(file_size)),
                        EncryptionMethod::ZipCrypto => { 
-                           let zip_password = if let Some(pass) = password {
-                               pass.clone()
-                           }
-                           else {
-                                match read_pass() {
-                                    Ok(pass) => pass,
-                                    Err(err) => return Err(ExtractError::ZipCryptoError(ZipCryptoError::IOError(err)))
-                                }
+                           let zip_password = match options.zip_password() {
+                               Some(pass) => pass.clone(),
+                               None => return Err(ExtractError::ZipCryptoError(ZipCryptoError::InvalidPassword(String::from("Unknown Password."))))
                            };
+
 
                            let content_reader = zip_file_reader.take(file_size);
                            let zip_crypto_reader = ZipCryptoReader::new(zip_password, local_file_header.crc32(), content_reader);
@@ -140,7 +141,7 @@ impl ZipItem {
                     Ok(Box::new(item_extract_dest_path))
                 }
             },
-            None => return Err(ExtractError::InvalidParentPath(format!("{}", dest_path.as_ref().display())))
+            None => return Err(ExtractError::InvalidParentPath(format!("{}", dest_path.display())))
         }
 
     }

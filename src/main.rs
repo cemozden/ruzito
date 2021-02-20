@@ -7,9 +7,9 @@ extern crate rpassword;
 
 mod zip;
 
-use std::{ffi::{OsString}, path::Path, process::exit};
+use std::{ffi::{OsString}, io::{Error, Write}, path::Path, process::exit};
 use clap::{App, AppSettings, Arg, SubCommand};
-use zip::{ZipFile, mem_map::EncryptionMethod};
+use zip::{ZipFile, mem_map::EncryptionMethod, options::ExtractOptions};
 use cli_table::{Cell, CellStruct, Table, format::Justify, print_stdout};
 
 type TableRow = Vec<CellStruct>;
@@ -33,7 +33,19 @@ fn main() {
             .arg(Arg::with_name("verbose")
                 .short("v")
                 .long("verbose") 
-                .help("Extracts the given zip file")
+                .help("Print the extracted files during extracting stage")
+                .case_insensitive(true))
+            .arg(Arg::with_name("dest_path")
+                .short("d")
+                .long("destination-path") 
+                .help("The path where ZIP files will be extracted")
+                .case_insensitive(true))
+            .arg(Arg::with_name("password")
+                .short("p")
+                .long("password") 
+                .help("The password of the ZIP file. If it's not provided, then ruzito will ask for it if required.")
+                .takes_value(true)
+                .value_name("PASSWORD")
                 .case_insensitive(true))
             .arg(Arg::with_name("list")
                 .short("l")
@@ -63,7 +75,33 @@ fn main() {
                         }
                     };
 
-                    zip_file.extract_all();
+                    let destination_path = matches.value_of("dest_path")
+                        .map(|path| OsString::from(path));
+
+                    let destination_path = match destination_path {
+                        Some(dest_path) => dest_path,
+                        None => zip_file.zip_file_path().clone()
+                    };
+
+                    let zip_password = matches.value_of("password")
+                        .map(|pass_str| String::from(pass_str));
+
+                    let zip_password = match zip_password {
+                        Some(pass) => Some(pass),
+                        None => if zip_file.file_encryption_method() != &EncryptionMethod::NoEncryption {
+                            match read_pass() {
+                                Ok(pass) => Some(pass),
+                                Err(_) => None
+                            }
+                        } else {
+                            None
+                        }
+                    };
+
+                    zip_file.extract_all(ExtractOptions::new(matches.is_present("verbose"),
+                         destination_path,
+                         zip_password
+                        ));
                 },
                 None => {
                     eprintln!("Given path {} is not a valid path! Exiting...", file_path);
@@ -144,6 +182,19 @@ fn main() {
         }
     }
 
+}
+#[inline]
+pub fn read_pass() -> Result<String, Error> {
+    print!("Enter password: ");
+    if let Err(err) = std::io::stdout().flush() {
+        return Err(err)
+    }
+    let pass = match rpassword::read_password() {
+        Ok(pass) => pass,
+        Err(err) => return Err(err)
+    };
+
+    Ok(pass)
 }
 
 fn get_path<P>(path: P) -> Option<OsString> where P: AsRef<Path> {
