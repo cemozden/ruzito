@@ -1,17 +1,19 @@
 use std::{ffi::OsString};
 
 pub struct ExtractOptions {
+    zip_file_path: OsString,
     verbose_mode: bool,
     destination_path: OsString,
     zip_password: Option<String>
 }
 
 impl ExtractOptions {
-    pub fn new(verbose_mode: bool, destination_path: OsString, zip_password: Option<String>) -> Self {
+    pub fn new(verbose_mode: bool, destination_path: OsString, zip_password: Option<String>, zip_file_path: OsString) -> Self {
         Self {
             verbose_mode,
             destination_path,
-            zip_password
+            zip_password,
+            zip_file_path
         }
     }
 
@@ -25,5 +27,9 @@ impl ExtractOptions {
 
     pub fn zip_password(&self) -> &Option<String> {
         &self.zip_password
+    }
+
+    pub fn zip_file_path(&self) -> &OsString {
+        &self.zip_file_path
     }
 }

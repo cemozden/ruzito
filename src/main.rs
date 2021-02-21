@@ -39,6 +39,8 @@ fn main() {
                 .short("d")
                 .long("destination-path") 
                 .help("The path where ZIP files will be extracted")
+                .takes_value(true)
+                .value_name("PATH")
                 .case_insensitive(true))
             .arg(Arg::with_name("password")
                 .short("p")
@@ -100,7 +102,8 @@ fn main() {
 
                     zip_file.extract_all(ExtractOptions::new(matches.is_present("verbose"),
                          destination_path,
-                         zip_password
+                         zip_password,
+                         zip_file.zip_file_path().clone()
                         ));
                 },
                 None => {
