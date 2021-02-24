@@ -67,6 +67,7 @@ impl RuzitoSubCommand for ZipSubCommand {
     fn run_command_processes(&self, matches: &ArgMatches) {
         if let Some(matches) = matches.subcommand_matches(self.name()) { 
             self.commands.iter()
+                .filter(|command_processor| matches.is_present(command_processor.command_name()))
                 .for_each(|command_processor| command_processor.process_command(matches));
          }
 
