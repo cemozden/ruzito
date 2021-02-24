@@ -106,7 +106,9 @@ impl ZipItem {
             let content_start_offset = local_file_header.content_start_offset();
                 
             zip_file_reader.seek(SeekFrom::Start(content_start_offset)).map_err(|_| ExtractError::UnableToSeekZipItem(file_start_offset))?;
-            let file_size = if local_file_header.compression_method() == &CompressionMethod::NoCompression { self.compressed_size() as u64 } else { self.uncompressed_size() as u64 };
+            let file_size = if local_file_header.compression_method() == &CompressionMethod::NoCompression 
+                && local_file_header.encryption_method() != &EncryptionMethod::ZipCrypto { self.uncompressed_size() as u64 } else { self.compressed_size() as u64 };
+
             let mut decompression_reader: Box<dyn Read> = match local_file_header.encryption_method() {
                EncryptionMethod::NoEncryption => Box::new(zip_file_reader.take(file_size)),
                EncryptionMethod::ZipCrypto => { 
