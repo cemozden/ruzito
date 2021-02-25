@@ -31,8 +31,6 @@ impl CommandProcessor for ExtractCommand {
 
     fn process_command(&self, matches: &ArgMatches) {
 
-        if !matches.is_present(self.command_name()) { return; }
-
         let file_path = matches.value_of(self.command_name()).unwrap();
         let zip_file_path = get_path(file_path);
         match zip_file_path {

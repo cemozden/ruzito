@@ -15,7 +15,6 @@ impl CommandProcessor for ListCommand {
     }
 
     fn process_command(&self, matches: &ArgMatches) {
-        if !matches.is_present(self.command_name()) { return; }
         
         let file_path = matches.value_of("list").unwrap();
         let zip_file_path = get_path(file_path);
