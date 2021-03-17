@@ -2,6 +2,8 @@ pub const FILE_HEADER_SIGNATURE: u32 = 0x04034b50;
 pub const END_OF_CENTRAL_DIR_SIGNATURE: u32 = 0x06054b50;
 pub const CENTRAL_DIR_SIGNATURE: u32 = 0x02014b50;
 
+pub const MINIMUM_SIZE_TO_COMPRESS: u32 = 10_000;
+
 #[derive(PartialEq, Eq, Debug)]
 pub enum HostOS {
     MsDos,
@@ -56,6 +58,16 @@ impl HostOS {
         }
     }
 
+    pub fn from_os() -> Self {
+        match std::env::consts::OS {
+            "windows" => HostOS::MsDos,
+            "linux" => HostOS::Unix,
+            "macos" => HostOS::MACINTOSH,
+            _ => HostOS::UNUSED
+        }
+    }
+
+
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -83,9 +95,16 @@ impl ZipVersion {
             minor
         }
     }
+
+    pub fn new(major: u8, minor: u8) -> Self {
+        Self {
+            major,
+            minor
+        }
+    }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum CompressionMethod {
     NoCompression,
     Shrunk,

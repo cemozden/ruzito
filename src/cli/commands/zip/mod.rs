@@ -4,6 +4,7 @@ use crate::cli::{CommandProcessor, RuzitoSubCommand};
 
 mod extract;
 mod list;
+mod zip;
 
 pub struct ZipSubCommand {
     commands: Vec<Box<dyn CommandProcessor>>
@@ -16,7 +17,8 @@ impl ZipSubCommand {
         Self {
             commands: vec![
                 Box::new(extract::ExtractCommand),
-                Box::new(list::ListCommand)
+                Box::new(list::ListCommand),
+                Box::new(zip::ZipCommand)
             ]
         }
 
@@ -59,9 +61,21 @@ impl RuzitoSubCommand for ZipSubCommand {
                 .help("Lists the files/directories inside of the ZIP file")
                 .case_insensitive(true)
                 .takes_value(true)
-                .value_name("ZIP_FILE")
-
-        )
+                .value_name("ZIP_FILE"))
+            .arg(Arg::with_name("zip")
+                .short("z")
+                .long("zip")
+                .help("Zips the given path")
+                .case_insensitive(true)
+                .takes_value(true)
+                .value_name("PATH_ON_DISK"))
+            .arg(Arg::with_name("name")
+                .short("n")
+                .long("name")
+                .help("Name of the ZIP file being created.")
+                .case_insensitive(true)
+                .takes_value(true)
+                .value_name("ZIP_FILE_NAME"))
     }
 
     fn run_command_processes(&self, matches: &ArgMatches) {

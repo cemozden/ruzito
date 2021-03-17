@@ -36,7 +36,7 @@ impl ZipMetadata {
         let mut buf_reader = BufReader::new(zip_file);
         let central_dir_count = eof_central_dir.total_num_of_central_dir() as usize;
 
-        buf_reader.seek(SeekFrom::Start(eof_central_dir.start_offset() as u64))?;
+        buf_reader.seek(SeekFrom::Start(eof_central_dir.cdfh_start_offset() as u64))?;
 
         (0..central_dir_count).into_iter()
             .map(|_| CentralDirectoryFileHeader::from_reader(&mut buf_reader))

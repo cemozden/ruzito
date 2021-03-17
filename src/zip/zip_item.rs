@@ -1,6 +1,6 @@
-use std::{fs::File, io::{BufReader, BufWriter, Read, Seek, SeekFrom}, path::Path};
+use std::{fs::File, io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write}, path::Path};
 
-use super::{ExtractError, compression_decoder, date_time::ZipDateTime, options::ExtractOptions, encryption::zip_crypto::{ZipCryptoReader, ZipCryptoError}, local_file_header, mem_map::{CompressionMethod, EncryptionMethod}};
+use super::{ExtractError, ZipError, central_dir_file_header::CentralDirectoryFileHeader, compression_decoder, compression_encoder, date_time::ZipDateTime, encryption::zip_crypto::{ZipCryptoReader, ZipCryptoError}, local_file_header, mem_map::{CompressionMethod, EncryptionMethod}, options::{ExtractOptions, ZipOptions}};
 
 #[derive(Debug)]
 pub struct ZipItem {
@@ -13,7 +13,6 @@ pub struct ZipItem {
     start_offset: u32,
     encryption_method: EncryptionMethod,
     crc32: u32
-
 }
 impl ZipItem {
 
@@ -48,8 +47,8 @@ impl ZipItem {
         self.uncompressed_size
     }
 
-    pub fn compression_method(&self) -> &CompressionMethod {
-        &self.compression_method
+    pub fn compression_method(&self) -> CompressionMethod {
+        self.compression_method
     }
 
     pub fn modified_date_time(&self) -> &ZipDateTime {
@@ -106,7 +105,7 @@ impl ZipItem {
             let content_start_offset = local_file_header.content_start_offset();
                 
             zip_file_reader.seek(SeekFrom::Start(content_start_offset)).map_err(|_| ExtractError::UnableToSeekZipItem(file_start_offset))?;
-            let file_size = if local_file_header.compression_method() == &CompressionMethod::NoCompression 
+            let file_size = if local_file_header.compression_method() == CompressionMethod::NoCompression 
                 && local_file_header.encryption_method() != &EncryptionMethod::ZipCrypto { self.uncompressed_size() as u64 } else { self.compressed_size() as u64 };
 
             let mut decompression_reader: Box<dyn Read> = match local_file_header.encryption_method() {
@@ -125,13 +124,70 @@ impl ZipItem {
                 },
                 _ => Box::new(zip_file_reader.take(file_size))
             };
-            compression_decoder::CompressionDecoder::decode_to_file(local_file_header.compression_method(), 
+            compression_decoder::CompressionDecoder::decode_to_file(&local_file_header.compression_method(), 
                     &mut decompression_reader, 
                     &mut buf_writer)
                         .map_err(|err| ExtractError::IOError(err))?;
             Ok(Box::new(item_extract_dest_path))
         }
-  }
+    }
+
+    pub fn zip(&mut self, zip_options: &ZipOptions) -> Result<(), ZipError> {
+
+        let file_path_on_disk = Path::new(zip_options.base_path()).join(&self.item_path);
+        let mut dest_path_file = File::create(zip_options.dest_path()).map_err(|err| ZipError::FileIOError(err))?;
+        let local_file_header = local_file_header::LocalFileHeader::from_zip_item(self);
+
+        let zip_item_start_offset = dest_path_file.seek(SeekFrom::End(0))
+            .map_err(|err| ZipError::FileIOError(err))?;
+
+        self.start_offset = zip_item_start_offset as u32;
+
+        if self.is_file {
+            let file_to_zip = File::open(file_path_on_disk)
+                .map_err(|err| ZipError::FileIOError(err))?;
+
+            let mut buf_reader = BufReader::new(file_to_zip);
+            let compression_method = local_file_header.compression_method();
+
+            let local_file_header_bin = local_file_header.to_binary();
+            dest_path_file.write_all(&local_file_header_bin)
+                .map_err(|err| ZipError::FileIOError(err))?;
+            
+            let file_data_start_offset = zip_item_start_offset + local_file_header_bin.len() as u64;
+
+            compression_encoder::CompressionEncoder::encode_to_file(
+                &compression_method,
+                &mut buf_reader,
+         &mut dest_path_file)
+                 .map_err(|err| ZipError::FileIOError(err)
+                )?;
+            let file_end_offset = dest_path_file.seek(SeekFrom::Current(0))
+                .map_err(|err| ZipError::FileIOError(err))?;    
+
+            self.compressed_size = (file_end_offset - file_data_start_offset) as u32;
+        } 
+        else {
+            dest_path_file.write_all(&local_file_header.to_binary())
+                .map_err(|err| ZipError::FileIOError(err))?;
+        }
+
+        //Write Central directory file header.
+        let cdfh = CentralDirectoryFileHeader::from_zip_item(self);
+        let mut cdfh_bin = cdfh.to_binary();
+
+        zip_options.update_central_directory_start_offset(dest_path_file
+            .seek(SeekFrom::Current(0))
+            .map_err(|err| ZipError::FileIOError(err))? as u32);
+
+        dest_path_file.seek(SeekFrom::End(0)).map_err(|err| ZipError::FileIOError(err))?;
+        dest_path_file.write_all(&mut cdfh_bin).map_err(|err| ZipError::FileIOError(err))?;
+
+        let current_cdfh_size = zip_options.central_directory_size();
+        zip_options.update_central_directory_size(current_cdfh_size + cdfh_bin.len() as u32);
+
+        Ok(())
+    }
 
     pub fn compressed_size(&self) -> u32 {
         self.compressed_size

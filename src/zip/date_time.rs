@@ -20,6 +20,21 @@ pub struct ZipDateTime {
     second: u8
 }
 
+impl ToOwned for ZipDateTime {
+    type Owned = ZipDateTime;
+
+    fn to_owned(&self) -> Self::Owned {
+        ZipDateTime {
+            day: self.day,
+            month: self.month,
+            year: self.year,
+            hour: self.hour,
+            minute: self.minute,
+            second: self.second
+        }
+    }
+}
+
 impl ZipDateTime {
 
     pub fn new(day: u8, month: u8, year: u16, hour: u8, minute: u8, second: u8) -> Self {
@@ -51,6 +66,18 @@ impl ZipDateTime {
             second
         }
     }
+
+    pub fn to_addr(self,  date_addr: &mut u16, time_addr: &mut u16) {
+        let month = (self.month << 5) as u16;
+        let year = (self.year - MS_DOS_YEAR_START_OFFSET) << 9;
+
+        let hour = (self.hour as u16) << 11;
+        let minute = (self.minute as u16) << 5;
+        let second = (self.second / 2) as u16;
+
+        *date_addr = year | month | (self.day as u16);
+        *time_addr = hour | minute | second;
+    }
 }
 
 impl Display for ZipDateTime {
@@ -79,5 +106,18 @@ mod tests {
         assert_eq!(time.minute, 15);
         assert_eq!(time.second, 40);
         println!("{:?}", time);
+    }
+
+    #[test]
+    fn test_to_addr() {
+        let time = ZipDateTime::new(1,3,2021,20,41, 56);
+
+        let mut date_addr = 0;
+        let mut time_addr = 0;
+
+        time.to_addr(&mut date_addr, &mut time_addr);
+
+        assert_eq!(date_addr, 0x5261);
+        assert_eq!(time_addr, 0xA53C);
     }
 }

@@ -1,9 +1,11 @@
 extern crate clap;
 extern crate byteorder;
 extern crate inflate;
+extern crate flate2;
 extern crate crc;
 extern crate cli_table;
 extern crate rpassword;
+extern crate chrono;
 
 mod zip;
 mod cli;

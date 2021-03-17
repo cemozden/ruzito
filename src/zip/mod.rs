@@ -1,7 +1,7 @@
 use std::{ffi::OsString, path::Path, process::exit};
 
 
-use self::{encryption::{zip_crypto::ZipCryptoError}, mem_map::EncryptionMethod, options::ExtractOptions, zip_item::ZipItem};
+use self::{encryption::{zip_crypto::ZipCryptoError}, mem_map::EncryptionMethod, options::{ExtractOptions, ZipOptions}, zip_item::ZipItem};
 
 
 mod local_file_header;
@@ -10,8 +10,10 @@ mod central_dir_file_header;
 mod zip_metadata;
 mod date_time;
 mod compression_decoder;
+mod compression_encoder;
 mod encryption;
 mod crc32;
+mod zip_creator;
 
 pub mod options;
 pub mod mem_map;
@@ -32,6 +34,14 @@ pub enum ExtractError {
     UnableToSeekZipItem(u32),
     IOError(std::io::Error),
     ZipCryptoError(ZipCryptoError),
+}
+
+#[derive(Debug)]
+pub enum ZipCreatorError {
+    InvalidInPath(OsString),
+    InvalidPath(OsString),
+    IOError(std::io::Error),
+    ZipError(ZipError)
 }
 
 #[derive(Debug)]
@@ -87,6 +97,15 @@ impl ZipFile {
         })
     }
 
+    pub fn create(file_count: u16, zip_items: Vec<zip_item::ZipItem>, zip_file_path: OsString, file_encryption_method: EncryptionMethod) -> Self {
+        Self {
+               file_count,
+               zip_items,
+               zip_file_path,
+               file_encryption_method
+        }
+    }
+
     pub fn extract_all(&mut self, options: ExtractOptions) {
         let mut item_iterator = self.zip_items.iter_mut();
 
@@ -138,6 +157,11 @@ impl ZipFile {
             }
 
         }
+    }
+
+    pub fn zip_file(&self, zip_options: ZipOptions) {
+        //TODO: Here use ZipCreator
+        todo!()
     }
 
     pub fn file_count(&self) -> u16 {
