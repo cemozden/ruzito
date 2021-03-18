@@ -1,7 +1,7 @@
 use std::io::{ErrorKind, prelude::*};
 use std::io::SeekFrom;
 use std::io::Error;
-use super::{mem_map::{HostOS, CENTRAL_DIR_SIGNATURE, MINIMUM_SIZE_TO_COMPRESS, ZipVersion, CompressionMethod, EncryptionMethod}, zip_item};
+use super::{mem_map::{HostOS, CENTRAL_DIR_SIGNATURE, MINIMUM_SIZE_TO_COMPRESS, ZipVersion, CompressionMethod, EncryptionMethod}};
 use byteorder::{LittleEndian, ByteOrder};
 use super::date_time::*;
 use super::zip_item::ZipItem;

@@ -1,8 +1,8 @@
-use std::{ffi::{OsStr, OsString}, fs::{File, Metadata, read_dir}, io::{Error, ErrorKind, Seek, SeekFrom, Write}, os::windows::prelude::MetadataExt, path::Path, time::SystemTime};
+use std::{ffi::{OsStr, OsString}, fs::{Metadata, OpenOptions, read_dir}, io::{Error, ErrorKind, Seek, SeekFrom, Write}, os::windows::prelude::MetadataExt, path::Path, time::SystemTime};
 
 use chrono::{DateTime, Datelike, Local, Timelike};
 
-use super::{ZipCreatorError, ZipFile, crc32::calculate_checksum, date_time::ZipDateTime, eof_central_dir::EndOfCentralDirectory, local_file_header::LocalFileHeader, mem_map::CompressionMethod, options::ZipOptions, zip_item::ZipItem};
+use super::{ZipCreatorError, ZipFile, crc32::calculate_checksum, date_time::ZipDateTime, eof_central_dir::EndOfCentralDirectory, mem_map::CompressionMethod, options::ZipOptions, zip_item::ZipItem};
 use super::mem_map::EncryptionMethod;
 
 const MIN_ZIP_ITEM_CAPACITY: usize = 10;
@@ -40,25 +40,24 @@ impl<'a> ZipCreator<'a> {
         }
 
         let eocd = EndOfCentralDirectory::from_zip_creator(zip_items.len() as u16, zip_options.central_directory_size(), zip_options.central_directory_start_offset());
-
-        let mut dest_file = File::open(zip_options.dest_path()).map_err(|err| ZipCreatorError::IOError(err))?;
+        let mut  eocd_bytes = eocd.to_binary(); 
+        let mut dest_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(zip_options.dest_path()).map_err(|err| ZipCreatorError::IOError(err))?;
 
         dest_file.seek(SeekFrom::End(0)).map_err(|err| ZipCreatorError::IOError(err))?;
-        dest_file.write_all(&mut eocd.to_binary()).map_err(|err| ZipCreatorError::IOError(err))?;
+        dest_file.write_all(&mut eocd_bytes).map_err(|err| ZipCreatorError::IOError(err))?;
 
         Ok(
             ZipFile::create(
                 item_count,
                  zip_items.into_iter().collect(),
              OsString::from(zip_options.dest_path().as_os_str()),
-            EncryptionMethod::NoEncryption
+            if zip_options.encrypt_file() { EncryptionMethod::ZipCrypto } else { EncryptionMethod::NoEncryption }
             )
         )
         
-    }
-
-    fn create_local_file_header(&self, zip_item: &mut ZipItem) -> LocalFileHeader {
-        LocalFileHeader::from_zip_item(zip_item)
     }
 
     fn create_zip_items(&self, path: &Path, item_path: Option<&OsStr>, zip_items: &mut Vec<ZipItem>) -> Result<(), ZipCreatorError> {

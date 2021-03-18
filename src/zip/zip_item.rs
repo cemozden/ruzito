@@ -1,4 +1,4 @@
-use std::{fs::File, io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write}, path::Path};
+use std::{fs::{File, OpenOptions}, io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write}, path::Path};
 
 use super::{ExtractError, ZipError, central_dir_file_header::CentralDirectoryFileHeader, compression_decoder, compression_encoder, date_time::ZipDateTime, encryption::zip_crypto::{ZipCryptoReader, ZipCryptoError}, local_file_header, mem_map::{CompressionMethod, EncryptionMethod}, options::{ExtractOptions, ZipOptions}};
 
@@ -135,7 +135,10 @@ impl ZipItem {
     pub fn zip(&mut self, zip_options: &ZipOptions) -> Result<(), ZipError> {
 
         let file_path_on_disk = Path::new(zip_options.base_path()).join(&self.item_path);
-        let mut dest_path_file = File::create(zip_options.dest_path()).map_err(|err| ZipError::FileIOError(err))?;
+        let mut dest_path_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(zip_options.dest_path()).map_err(|err| ZipError::FileIOError(err))?;
         let local_file_header = local_file_header::LocalFileHeader::from_zip_item(self);
 
         let zip_item_start_offset = dest_path_file.seek(SeekFrom::End(0))

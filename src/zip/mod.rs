@@ -1,7 +1,7 @@
 use std::{ffi::OsString, path::Path, process::exit};
 
 
-use self::{encryption::{zip_crypto::ZipCryptoError}, mem_map::EncryptionMethod, options::{ExtractOptions, ZipOptions}, zip_item::ZipItem};
+use self::{encryption::{zip_crypto::ZipCryptoError}, mem_map::EncryptionMethod, options::ExtractOptions, zip_item::ZipItem};
 
 
 mod local_file_header;
@@ -13,11 +13,11 @@ mod compression_decoder;
 mod compression_encoder;
 mod encryption;
 mod crc32;
-mod zip_creator;
 
 pub mod options;
 pub mod mem_map;
 pub mod zip_item;
+pub mod zip_creator;
 
 use zip::crc32::calculate_checksum;
 
@@ -157,11 +157,6 @@ impl ZipFile {
             }
 
         }
-    }
-
-    pub fn zip_file(&self, zip_options: ZipOptions) {
-        //TODO: Here use ZipCreator
-        todo!()
     }
 
     pub fn file_count(&self) -> u16 {

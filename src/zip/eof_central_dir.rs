@@ -71,10 +71,28 @@ impl EndOfCentralDirectory {
         let mut eof_bin = Vec::with_capacity(MIN_EOF_CENTRAL_DIRECTORY_SIZE);
 
         let mut signature_bytes = vec![0u8; 4];
+        let mut num_of_disk = vec![0u8, 2];
+        let mut num_of_disk_start_central_dir = vec![0u8, 2];
+        let mut num_of_central_dir = vec![0u8, 2];
+        let mut total_num_of_central_dir = vec![0u8, 2];
+        let mut size_of_central_dir = vec![0u8; 4];
+        let mut cdfh_start_offset = vec![0u8; 4];
+        let mut zip_comment_len = vec![0u8, 2];
 
         LittleEndian::write_u32(&mut signature_bytes, END_OF_CENTRAL_DIR_SIGNATURE);
+        LittleEndian::write_u16(&mut num_of_central_dir, self.num_of_central_dir);
+        LittleEndian::write_u16(&mut total_num_of_central_dir, self.total_num_of_central_dir);
+        LittleEndian::write_u32(&mut size_of_central_dir, self.size_of_central_dir);
+        LittleEndian::write_u32(&mut cdfh_start_offset, self.cdfh_start_offset);
 
         eof_bin.append(&mut signature_bytes);
+        eof_bin.append(&mut num_of_disk);
+        eof_bin.append(&mut num_of_disk_start_central_dir);
+        eof_bin.append(&mut num_of_central_dir);
+        eof_bin.append(&mut total_num_of_central_dir);
+        eof_bin.append(&mut size_of_central_dir);
+        eof_bin.append(&mut cdfh_start_offset);
+        eof_bin.append(&mut zip_comment_len);
 
         eof_bin
     }
