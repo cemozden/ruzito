@@ -1,6 +1,7 @@
-use std::path::Path;
+use std::{ffi::OsString, path::Path};
+use crate::{cli::CommandProcessor, zip::{ZipFile, mem_map::EncryptionMethod, options::ZipOptions, zip_item_creator::ZipItemCreator}};
 
-use crate::{cli::CommandProcessor, zip::{options::ZipOptions, zip_creator::ZipCreator, ZipCreatorError}};
+const MIN_ZIP_ITEM_CAPACITY: usize = 10;
 
 pub struct ZipCommand;
 
@@ -16,21 +17,24 @@ impl CommandProcessor for ZipCommand {
             Some(p) => p,
             None => return
         });
-        let zip_options = ZipOptions::new(zip_path, dest_path, false);
-        let zip_creator = ZipCreator::new(zip_path);
+        let mut zip_items = Vec::with_capacity(MIN_ZIP_ITEM_CAPACITY);
 
-        match zip_creator.create(&zip_options) {
-            Ok(_) => {
-                //TODO: Implement successful message
-            },
-            Err(err) => {
-                match err {
-                    ZipCreatorError::InvalidInPath(path) => eprintln!("Invalid path to zip! Path: {:?}", path),
-                    ZipCreatorError::InvalidPath(path) => eprintln!("Invalid path provided! Given Path: {:?}", path),
-                    ZipCreatorError::IOError(err) => eprintln!("An I/O error occured! Error: {:?}", err),
-                    ZipCreatorError::ZipError(err) => eprintln!("A Zip error occurd! Error: {:?}", err)                }
-            }
+        let zip_options = ZipOptions::new(zip_path, dest_path, false);
+        let zip_item_creator = ZipItemCreator::new(zip_path);
+
+        if let Err(err) = zip_item_creator.create_zip_items(zip_path, None, &mut zip_items) {
+            eprintln!("An error occured while creating zip items! Err: {:?}", err);
+            return;
         }
+
+        let mut zip_file = ZipFile::create(zip_items.len() as u16, zip_items, OsString::from(dest_path.as_os_str()), EncryptionMethod::NoEncryption);
+
+        match zip_file.create_zip_file(&zip_options) {
+            Ok(()) => {
+                //TODO: Successful message.
+            },
+            Err(err) => eprintln!("An error occured while zipping the path Error: {:?}", err)
+        };
 
     }
 }

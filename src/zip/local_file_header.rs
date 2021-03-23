@@ -138,13 +138,13 @@ impl LocalFileHeader {
 
         self.last_modified_date_time.to_addr(&mut last_modification_day, &mut last_modification_time);
 
-        let mut last_modification_time_bytes = vec![0; 2];
-        let mut last_modification_day_bytes = vec![0; 2];
-        let mut crc32 = vec![0; 4];
-        let mut compressed_size = vec![0; 4];
-        let mut uncompressed_size = vec![0; 4];
-        let mut file_name_length = vec![0; 2];
-        let mut extra_field_length = vec![0; 2];
+        let mut last_modification_time_bytes = vec![0, 0];
+        let mut last_modification_day_bytes = vec![0, 0];
+        let mut crc32 = vec![0, 0, 0, 0];
+        let mut compressed_size = vec![0, 0, 0, 0];
+        let mut uncompressed_size = vec![0, 0, 0, 0];
+        let mut file_name_length = vec![0, 0];
+        let mut extra_field_length = vec![0, 0];
 
         LittleEndian::write_u16(&mut last_modification_day_bytes, last_modification_day);
         LittleEndian::write_u16(&mut last_modification_time_bytes, last_modification_time);

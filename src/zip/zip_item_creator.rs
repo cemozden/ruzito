@@ -1,18 +1,17 @@
-use std::{ffi::{OsStr, OsString}, fs::{Metadata, OpenOptions, read_dir}, io::{Error, ErrorKind, Seek, SeekFrom, Write}, os::windows::prelude::MetadataExt, path::Path, time::SystemTime};
+use std::{ffi::{OsStr, OsString}, fs::{Metadata, read_dir}, io::{Error, ErrorKind}, os::windows::prelude::MetadataExt, path::Path, time::SystemTime};
 
 use chrono::{DateTime, Datelike, Local, Timelike};
 
-use super::{ZipCreatorError, ZipFile, crc32::calculate_checksum, date_time::ZipDateTime, eof_central_dir::EndOfCentralDirectory, mem_map::CompressionMethod, options::ZipOptions, zip_item::ZipItem};
+use super::{ZipCreatorError, crc32::calculate_checksum, date_time::ZipDateTime, mem_map::CompressionMethod, zip_item::ZipItem};
 use super::mem_map::EncryptionMethod;
 
-const MIN_ZIP_ITEM_CAPACITY: usize = 10;
 const MIN_SIZE_TO_COMPRESS: u64 = 10000;
 
-pub struct ZipCreator<'a>{
+pub struct ZipItemCreator<'a>{
     base_path: &'a Path
 }
 
-impl<'a> ZipCreator<'a> {
+impl<'a> ZipItemCreator<'a> {
 
     pub fn new(base_path: &'a Path) -> Self {
         Self {
@@ -20,47 +19,7 @@ impl<'a> ZipCreator<'a> {
         }
     }
 
-    pub fn create(&self, zip_options: &ZipOptions) -> Result<ZipFile, ZipCreatorError> {
-        let path = self.base_path;
-
-        if !path.exists() {
-            return Err(ZipCreatorError::InvalidInPath(path.as_os_str().to_owned()))
-        }
-
-        let mut zip_items = Vec::with_capacity(MIN_ZIP_ITEM_CAPACITY);
-        self.create_zip_items(path, None, &mut zip_items)?;
-        let item_count = zip_items.len() as u16;
-
-        for zip_item in &mut zip_items {
-            println!("{}", zip_item.item_path());
-
-            if let Err(err) =  zip_item.zip(zip_options) {
-                return Err(ZipCreatorError::ZipError(err))
-            }
-        }
-
-        let eocd = EndOfCentralDirectory::from_zip_creator(zip_items.len() as u16, zip_options.central_directory_size(), zip_options.central_directory_start_offset());
-        let mut  eocd_bytes = eocd.to_binary(); 
-        let mut dest_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(zip_options.dest_path()).map_err(|err| ZipCreatorError::IOError(err))?;
-
-        dest_file.seek(SeekFrom::End(0)).map_err(|err| ZipCreatorError::IOError(err))?;
-        dest_file.write_all(&mut eocd_bytes).map_err(|err| ZipCreatorError::IOError(err))?;
-
-        Ok(
-            ZipFile::create(
-                item_count,
-                 zip_items.into_iter().collect(),
-             OsString::from(zip_options.dest_path().as_os_str()),
-            if zip_options.encrypt_file() { EncryptionMethod::ZipCrypto } else { EncryptionMethod::NoEncryption }
-            )
-        )
-        
-    }
-
-    fn create_zip_items(&self, path: &Path, item_path: Option<&OsStr>, zip_items: &mut Vec<ZipItem>) -> Result<(), ZipCreatorError> {
+    pub fn create_zip_items(&self, path: &Path, item_path: Option<&OsStr>, zip_items: &mut Vec<ZipItem>) -> Result<(), ZipCreatorError> {
 
         if path.is_dir() {
            if let Some(it_path) = item_path {

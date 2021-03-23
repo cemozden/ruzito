@@ -1,7 +1,7 @@
-use std::{ffi::OsString, path::Path, process::exit};
+use std::{ffi::OsString, fs::{File, OpenOptions}, io::{BufReader, Seek, SeekFrom, Write}, path::Path, process::exit};
 
 
-use self::{encryption::{zip_crypto::ZipCryptoError}, mem_map::EncryptionMethod, options::ExtractOptions, zip_item::ZipItem};
+use self::{encryption::{zip_crypto::ZipCryptoError}, local_file_header::LocalFileHeader, central_dir_file_header::CentralDirectoryFileHeader, eof_central_dir::EndOfCentralDirectory, mem_map::EncryptionMethod, options::{ExtractOptions, ZipOptions}, zip_item::ZipItem};
 
 
 mod local_file_header;
@@ -17,7 +17,7 @@ mod crc32;
 pub mod options;
 pub mod mem_map;
 pub mod zip_item;
-pub mod zip_creator;
+pub mod zip_item_creator;
 
 use zip::crc32::calculate_checksum;
 
@@ -38,10 +38,8 @@ pub enum ExtractError {
 
 #[derive(Debug)]
 pub enum ZipCreatorError {
-    InvalidInPath(OsString),
     InvalidPath(OsString),
     IOError(std::io::Error),
-    ZipError(ZipError)
 }
 
 #[derive(Debug)]
@@ -157,6 +155,108 @@ impl ZipFile {
             }
 
         }
+    }
+
+    pub fn create_zip_file(&mut self, zip_options: &ZipOptions) -> Result<(), ZipError> {
+        let mut dest_path_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(zip_options.dest_path()).map_err(|err| ZipError::FileIOError(err))?;
+        let mut cdfh_vec = Vec::with_capacity(self.zip_items.len());
+
+        for zip_item in &mut self.zip_items {
+            println!("{}", zip_item.item_path());
+
+            let zip_item_start_offset = dest_path_file.seek(SeekFrom::End(0))
+                       .map_err(|err| ZipError::FileIOError(err))?;
+
+            zip_item.update_start_offset(zip_item_start_offset as u32);
+
+            let reader = match ZipFile::generate_file_reader(zip_item, zip_options) {
+                Ok(reader) => reader,
+                Err(err) => {
+                    return Err(err);
+                }
+            };
+
+            if zip_item.is_file() {
+                // Unwrap is safe here. We make sure that there'll always be a reader for each file.
+                let mut buf_reader = reader.unwrap();
+
+                let local_file_header = LocalFileHeader::from_zip_item(zip_item);
+                //Write local file header
+                dest_path_file.write_all(&local_file_header.to_binary())
+                    .map_err(|err| ZipError::FileIOError(err))?;
+
+                let file_start_offset = dest_path_file.seek(SeekFrom::Current(0))
+                                .map_err(|err| ZipError::FileIOError(err))?;    
+
+                compression_encoder::CompressionEncoder::encode_to_file(
+                                &zip_item.compression_method(),
+                                &mut buf_reader,
+                         &mut dest_path_file)
+                                 .map_err(|err| ZipError::FileIOError(err)
+                                )?;
+
+                let file_end_offset = dest_path_file.seek(SeekFrom::Current(0))
+                                .map_err(|err| ZipError::FileIOError(err))?;    
+                            
+                let file_compressed_size = (file_end_offset - file_start_offset) as u32;
+                zip_item.update_compressed_size(file_compressed_size);
+                
+            }
+
+            dest_path_file.seek(SeekFrom::Start(zip_item.start_offset() as u64))
+                .map_err(|err| ZipError::FileIOError(err))?;
+
+            //Update local file header with updated compressed size
+            dest_path_file.write_all(&LocalFileHeader::from_zip_item(zip_item).to_binary())
+                .map_err(|err| ZipError::FileIOError(err))?;
+
+            dest_path_file.seek(SeekFrom::End(0))
+                .map_err(|err| ZipError::FileIOError(err))?;
+            
+            cdfh_vec.push(CentralDirectoryFileHeader::from_zip_item(zip_item));
+        }
+
+        let mut cdfh_size = 0;
+        let cdfh_start_offset = dest_path_file.seek(SeekFrom::End(0))
+            .map_err(|err| ZipError::FileIOError(err))? as u32;
+
+        for cdfh in cdfh_vec {
+            let cdfh_bin = cdfh.to_binary();
+            cdfh_size = cdfh_size + cdfh_bin.len();
+            dest_path_file.write_all(&&cdfh_bin)
+                .map_err(|err| ZipError::FileIOError(err))?;
+        }
+                
+        let item_count = self.zip_items.len() as u16;
+        let eocd = EndOfCentralDirectory::from_zip_creator(item_count, cdfh_size as u32, cdfh_start_offset);
+        let mut  eocd_bytes = eocd.to_binary(); 
+
+        dest_path_file.write_all(&mut eocd_bytes).map_err(|err| ZipError::FileIOError(err))?;
+
+        Ok(())
+    }
+
+    fn generate_file_reader(zip_item: &mut ZipItem, zip_options: &ZipOptions) -> Result<Option<BufReader<File>>, ZipError> {
+
+        let file_path_on_disk = Path::new(zip_options.base_path()).join(zip_item.item_path());
+        let zip_item_reader;
+
+        if zip_item.is_file() {
+            let file_to_zip = File::open(file_path_on_disk)
+                .map_err(|err| ZipError::FileIOError(err))?;
+
+            let buf_reader = BufReader::new(file_to_zip);
+            zip_item_reader = Some(buf_reader);
+        } 
+        else {
+            zip_item_reader = None;
+        }
+
+        Ok(zip_item_reader)
     }
 
     pub fn file_count(&self) -> u16 {

@@ -1,4 +1,4 @@
-use std::{cell::Cell, ffi::OsString, path::Path};
+use std::{ffi::OsString, path::Path};
 
 pub struct ExtractOptions {
     zip_file_path: OsString,
@@ -11,10 +11,6 @@ pub struct ZipOptions<'a> {
     base_path: &'a Path,
     encrypt_file: bool,
     dest_path: &'a Path,
-    current_offset: u32,
-    central_directory_start_offset: Cell<u32>,
-    central_directory_size: Cell<u32>,
-
 }
 
 impl<'a> ZipOptions<'a> {
@@ -24,9 +20,6 @@ impl<'a> ZipOptions<'a> {
             base_path,
             dest_path,
             encrypt_file,
-            current_offset: 0,
-            central_directory_start_offset: Cell::new(0),
-            central_directory_size: Cell::new(0)
         }
     }
 
@@ -41,27 +34,6 @@ impl<'a> ZipOptions<'a> {
     pub fn encrypt_file(&self) -> bool {
         self.encrypt_file
     }
-
-    pub fn current_offset(&self) -> u32 {
-        self.current_offset
-    }
-
-    pub fn central_directory_start_offset(&self) -> u32 {
-        self.central_directory_start_offset.get()
-    }
-
-    pub fn update_central_directory_start_offset(&self, new_offset: u32) {
-        self.central_directory_start_offset.replace(new_offset);
-    }
-
-    pub fn central_directory_size(&self) -> u32 {
-        self.central_directory_size.get()
-    }
-
-    pub fn update_central_directory_size(&self, new_offset: u32) {
-        self.central_directory_size.replace(new_offset);
-    }
-    
 
 }
 
