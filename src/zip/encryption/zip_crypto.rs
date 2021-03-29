@@ -191,19 +191,18 @@ mod tests {
 
         assert!(zip_crypto_encryption_reader.is_err());
     }
-
     #[test]
     fn should_yield_zip_crypto_reader_if_password_is_correct() {
-        let cursor = Cursor::new([20, 34, 224, 37, 10, 72, 54, 59, 253, 87, 138, 42]);
+        let cursor = Cursor::new([0xD0, 0x66, 0x78, 0x57, 0xA6, 0xC0, 0x45, 0x75, 0x7B, 0x0F, 0x77, 0x8F, 0x36, 0x53, 0x9b, 0x6f, 0xAC]);
         let mut zip_crypto_encryption_reader = ZipCryptoReader::new(String::from("123456"), 
-        0x957E00E8, 
+        0x2952CCF, 
         cursor).unwrap();
 
         let mut buf = [0; 4];
 
         let _ = zip_crypto_encryption_reader.read(&mut buf);
         
-        //assert_eq!(buf, [0xB5, 0x5B, 0x4B, 0x72]);
+        assert_eq!(buf, [0xB5, 0x5B, 0x4B, 0x72]);
     }
 
 }
