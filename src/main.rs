@@ -6,6 +6,7 @@ extern crate crc;
 extern crate cli_table;
 extern crate rpassword;
 extern crate chrono;
+extern crate rand;
 
 mod zip;
 mod cli;

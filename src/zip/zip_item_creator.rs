@@ -19,7 +19,7 @@ impl<'a> ZipItemCreator<'a> {
         }
     }
 
-    pub fn create_zip_items(&self, path: &Path, item_path: Option<&OsStr>, zip_items: &mut Vec<ZipItem>) -> Result<(), ZipCreatorError> {
+    pub fn create_zip_items(&self, path: &Path, item_path: Option<&OsStr>, zip_items: &mut Vec<ZipItem>, encryption_method: EncryptionMethod) -> Result<(), ZipCreatorError> {
 
         if path.is_dir() {
            if let Some(it_path) = item_path {
@@ -55,7 +55,7 @@ impl<'a> ZipItemCreator<'a> {
                 let item_path = entry_path.strip_prefix(self.base_path)
                     .map_err(|_| ZipCreatorError::InvalidPath(OsString::from("Unable to apply strip prefix!")))?;
                 
-                self.create_zip_items(entry_path.as_path(), Some(item_path.as_os_str()), zip_items)?;
+                self.create_zip_items(entry_path.as_path(), Some(item_path.as_os_str()), zip_items, encryption_method)?;
            }
 
         }
@@ -88,7 +88,7 @@ impl<'a> ZipItemCreator<'a> {
                 0,
                 self.get_file_modified_date_time(&file_metadata).map_err(|err| ZipCreatorError::IOError(err))?,
                 0,
-                EncryptionMethod::NoEncryption,
+                encryption_method,
                 calculate_checksum(path).map_err(|err| ZipCreatorError::IOError(err))?
             ));
             

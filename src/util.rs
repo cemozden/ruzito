@@ -1,4 +1,4 @@
-use std::{ffi::OsString, path::Path};
+use std::{ffi::OsString, io::{Error, Write}, path::Path};
 
 pub fn get_path<P>(path: P) -> Option<OsString> where P: AsRef<Path> {
     let file_path = path.as_ref();
@@ -22,4 +22,17 @@ pub fn get_path<P>(path: P) -> Option<OsString> where P: AsRef<Path> {
     else {
         return Some(OsString::from(file_path.as_os_str()));
     }
+}
+
+pub fn read_pass() -> Result<String, Error> {
+    print!("Enter password: ");
+    if let Err(err) = std::io::stdout().flush() {
+        return Err(err)
+    }
+    let pass = match rpassword::read_password() {
+        Ok(pass) => pass,
+        Err(err) => return Err(err)
+    };
+
+    Ok(pass)
 }

@@ -1,28 +1,11 @@
-use std::{ffi::OsString, io::{Error, Write}, process::exit};
+use std::{ffi::OsString, process::exit};
 
 use clap::ArgMatches;
 
-use crate::{cli::CommandProcessor, util::get_path, zip::{ZipFile, mem_map::EncryptionMethod, options::ExtractOptions}};
+use crate::{cli::CommandProcessor, util::{self, get_path}, zip::{ZipFile, mem_map::EncryptionMethod, options::ExtractOptions}};
 
 
 pub struct ExtractCommand;
-
-impl ExtractCommand {
-    #[inline]
-    fn read_pass(&self) -> Result<String, Error> {
-        print!("Enter password: ");
-        if let Err(err) = std::io::stdout().flush() {
-            return Err(err)
-        }
-        let pass = match rpassword::read_password() {
-            Ok(pass) => pass,
-            Err(err) => return Err(err)
-        };
-
-        Ok(pass)
-    }
-
-}
 
 impl CommandProcessor for ExtractCommand {
     fn command_name(&self) -> &str {
@@ -55,7 +38,7 @@ impl CommandProcessor for ExtractCommand {
                 let zip_password = match zip_password {
                     Some(pass) => Some(pass),
                     None => if zip_file.file_encryption_method() != &EncryptionMethod::NoEncryption {
-                        match self.read_pass() {
+                        match util::read_pass() {
                             Ok(pass) => Some(pass),
                             Err(_) => None
                         }

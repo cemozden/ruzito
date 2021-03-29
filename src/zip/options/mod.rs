@@ -11,15 +11,19 @@ pub struct ZipOptions<'a> {
     base_path: &'a Path,
     encrypt_file: bool,
     dest_path: &'a Path,
+    password: Option<String>,
+    verbose_mode: bool
 }
 
 impl<'a> ZipOptions<'a> {
 
-    pub fn new(base_path: &'a Path, dest_path: &'a Path, encrypt_file: bool) -> Self {
+    pub fn new(base_path: &'a Path, dest_path: &'a Path, encrypt_file: bool, password: Option<String>, verbose_mode: bool) -> Self {
         Self {
             base_path,
             dest_path,
             encrypt_file,
+            password,
+            verbose_mode
         }
     }
 
@@ -31,8 +35,16 @@ impl<'a> ZipOptions<'a> {
         self.dest_path
     }
 
+    pub fn password(&self) -> &Option<String> {
+        &self.password
+    }
+
     pub fn encrypt_file(&self) -> bool {
         self.encrypt_file
+    }
+
+    pub fn verbose_mode(&self) -> bool {
+        self.verbose_mode
     }
 
 }
