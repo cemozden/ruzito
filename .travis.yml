@@ -3,6 +3,4 @@ rust:
   - 1.50.0
 cache: cargo
 os: 
-  - linux
-  - osx
   - windows

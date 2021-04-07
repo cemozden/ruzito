@@ -1,4 +1,4 @@
-use std::{ffi::{OsStr, OsString}, fs::{Metadata, read_dir}, io::{Error, ErrorKind}, os::windows::prelude::MetadataExt, path::Path, time::SystemTime};
+use std::{ffi::{OsStr, OsString}, fs::{Metadata, read_dir}, io::{Error, ErrorKind}, os::windows::prelude::MetadataExt, path::PathBuf, time::SystemTime};
 
 use chrono::{DateTime, Datelike, Local, Timelike};
 
@@ -8,18 +8,18 @@ use super::mem_map::EncryptionMethod;
 const MIN_SIZE_TO_COMPRESS: u64 = 10000;
 
 pub struct ZipItemCreator<'a>{
-    base_path: &'a Path
+    base_path: &'a PathBuf
 }
 
 impl<'a> ZipItemCreator<'a> {
 
-    pub fn new(base_path: &'a Path) -> Self {
+    pub fn new(base_path: &'a PathBuf) -> Self {
         Self {
             base_path
         }
     }
 
-    pub fn create_zip_items(&self, path: &Path, item_path: Option<&OsStr>, zip_items: &mut Vec<ZipItem>, encryption_method: EncryptionMethod) -> Result<(), ZipCreatorError> {
+    pub fn create_zip_items(&self, path: &PathBuf, item_path: Option<&OsStr>, zip_items: &mut Vec<ZipItem>, encryption_method: EncryptionMethod) -> Result<(), ZipCreatorError> {
 
         if path.is_dir() {
            if let Some(it_path) = item_path {
@@ -55,7 +55,7 @@ impl<'a> ZipItemCreator<'a> {
                 let item_path = entry_path.strip_prefix(self.base_path)
                     .map_err(|_| ZipCreatorError::InvalidPath(OsString::from("Unable to apply strip prefix!")))?;
                 
-                self.create_zip_items(entry_path.as_path(), Some(item_path.as_os_str()), zip_items, encryption_method)?;
+                self.create_zip_items(&entry_path, Some(item_path.as_os_str()), zip_items, encryption_method)?;
            }
 
         }

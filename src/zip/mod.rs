@@ -1,4 +1,4 @@
-use std::{ffi::OsString, fs::{File, OpenOptions}, io::{BufReader, BufWriter, Seek, SeekFrom, Write}, path::Path, process::exit};
+use std::{ffi::OsString, fs::{File, OpenOptions}, io::{BufReader, BufWriter, Seek, SeekFrom, Write}, path::{Path, PathBuf}, process::exit};
 
 
 use self::{encryption::{zip_crypto::ZipCryptoError, zip_crypto::ZipCryptoWriter}, local_file_header::LocalFileHeader, central_dir_file_header::CentralDirectoryFileHeader, eof_central_dir::EndOfCentralDirectory, mem_map::EncryptionMethod, options::{ExtractOptions, ZipOptions}, zip_item::ZipItem};
@@ -182,6 +182,7 @@ impl ZipFile {
             let zip_item_start_offset = file_writer.seek(SeekFrom::End(0))
                        .map_err(|err| ZipError::FileIOError(err))?;
 
+
             zip_item.update_start_offset(zip_item_start_offset as u32);
 
             let reader = match ZipFile::generate_file_reader(zip_item, zip_options) {
@@ -277,7 +278,12 @@ impl ZipFile {
 
     fn generate_file_reader(zip_item: &mut ZipItem, zip_options: &ZipOptions) -> Result<Option<BufReader<File>>, ZipError> {
 
-        let file_path_on_disk = Path::new(zip_options.base_path()).join(zip_item.item_path());
+        let file_path_on_disk = if zip_options.base_path().is_dir() {
+            PathBuf::new().join(zip_options.base_path()).join(zip_item.item_path())
+        } else {
+            zip_options.base_path().clone()
+        };
+
         let zip_item_reader;
 
         if zip_item.is_file() {
