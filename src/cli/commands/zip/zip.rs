@@ -14,10 +14,30 @@ impl CommandProcessor for ZipCommand {
     }
 
     fn process_command(&self, matches: &clap::ArgMatches) {
+        let mut zip_file_name;
         let given_zip_path = Path::new(matches.value_of(self.command_name()).unwrap());
         let given_dest_path = Path::new(match matches.value_of("dest_path") {
             Some(p) => p,
-            None => return
+            None => {
+                match given_zip_path.file_name() {
+                     Some(file_name) => {
+                         zip_file_name = OsString::from(file_name);
+                         zip_file_name.push(".zip");
+
+                         match zip_file_name.to_str() {
+                             Some(path) => path,
+                             None => {
+                                 eprintln!("An error occured while generating destination path. Exiting..");
+                                 return;
+                             }
+                         }
+                     },
+                     None => {
+                         eprintln!("Invalid zip path. Exiting...");
+                         return;
+                     }
+            }
+        }
         });
 
         let zip_path = if given_zip_path.is_absolute() {
