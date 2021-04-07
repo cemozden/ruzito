@@ -1,4 +1,4 @@
-use std::{ffi::OsString, path::{Path, PathBuf}, process::exit};
+use std::{path::{Path, PathBuf}, process::exit};
 
 use clap::ArgMatches;
 
@@ -36,7 +36,7 @@ impl CommandProcessor for ExtractCommand {
             PathBuf::new().join(given_file_path)
         };
 
-        let zip_file = ZipFile::new(file_path);
+        let zip_file = ZipFile::new(file_path.clone());
                 
         let mut zip_file = match zip_file {
             Ok(zip_file) => zip_file,
@@ -46,11 +46,33 @@ impl CommandProcessor for ExtractCommand {
             }
         };
         let destination_path = matches.value_of("dest_path")
-            .map(|path| OsString::from(path));
+            .map(|path| PathBuf::new().join(path));
         let destination_path = match destination_path {
             Some(dest_path) => dest_path,
-            None => zip_file.zip_file_path().clone()
+            None => PathBuf::new().join(match file_path.file_name() {
+                Some(file_name) => {
+                    let mut path_buf = PathBuf::new().join(file_name);
+                    
+                    if let Some(_) = path_buf.extension() {
+                        path_buf.set_extension("");
+                    }
+
+                    if !path_buf.exists() {
+                        if let Err(err) = std::fs::create_dir_all(path_buf.as_path()) {
+                            eprintln!("An error occured while creating the destination path folder. Error: {}", err);
+                            return;
+                        }
+                    }
+                    path_buf
+                },
+                None => {
+                    eprintln!("An error occured while generating the destination path for extraction.");
+                    return;
+                }
+            })
         };
+
+
         let zip_password = matches.value_of("password")
             .map(|pass_str| String::from(pass_str));
         let zip_password = match zip_password {
@@ -65,13 +87,11 @@ impl CommandProcessor for ExtractCommand {
             }
         };
         zip_file.extract_all(ExtractOptions::new(matches.is_present("verbose"),
-             destination_path,
+             destination_path.as_path(),
              zip_password,
              zip_file.zip_file_path().clone()
             ));
 
     }
-
-
 
 }

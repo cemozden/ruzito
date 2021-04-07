@@ -1,9 +1,9 @@
-use std::{ffi::OsString, path::PathBuf};
+use std::{ffi::OsString, path::{Path, PathBuf}};
 
-pub struct ExtractOptions {
+pub struct ExtractOptions<'a> {
     zip_file_path: OsString,
     verbose_mode: bool,
-    destination_path: OsString,
+    destination_path: &'a Path,
     zip_password: Option<String>
 }
 
@@ -49,8 +49,8 @@ impl<'a> ZipOptions<'a> {
 
 }
 
-impl ExtractOptions {
-    pub fn new(verbose_mode: bool, destination_path: OsString, zip_password: Option<String>, zip_file_path: OsString) -> Self {
+impl<'a> ExtractOptions<'a> {
+    pub fn new(verbose_mode: bool, destination_path: &'a Path, zip_password: Option<String>, zip_file_path: OsString) -> Self {
         Self {
             verbose_mode,
             destination_path,
@@ -63,8 +63,8 @@ impl ExtractOptions {
         self.verbose_mode
     }
 
-    pub fn destination_path(&self) -> &OsString {
-        &self.destination_path
+    pub fn destination_path(&self) -> &Path {
+        self.destination_path
     }
 
     pub fn zip_password(&self) -> &Option<String> {
