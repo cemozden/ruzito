@@ -1,7 +1,7 @@
-use std::{fs::File, io::{Read, Error}, path::Path};
+use std::{fs::File, io::{Read, Error}, path::PathBuf};
 use crc::{crc32, Hasher32};
 
-pub fn calculate_checksum<P>(path: P) -> Result<u32, Error> where P: AsRef<Path> {
+pub fn calculate_checksum(path: &PathBuf) -> Result<u32, Error> {
     let mut file = File::open(path)?;
     let mut buf = vec![0; 1_048_576];
 

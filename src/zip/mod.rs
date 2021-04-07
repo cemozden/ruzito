@@ -110,16 +110,15 @@ impl ZipFile {
         let mut item_iterator = self.zip_items.iter_mut();
 
         while let Some(item) = item_iterator.next() {
-            let zip_file_path = &self.zip_file_path;
             let item_extract_result = item.extract(&options);
             let is_file = item.is_file();
 
             match item_extract_result {
                 Ok(path) => {
-                    let output_file_path = Path::new(zip_file_path).join(path.as_ref());
+                    let output_file_path = PathBuf::new().join(path.as_ref());
                     
                     if is_file {
-                        match calculate_checksum(output_file_path) {
+                        match calculate_checksum(&output_file_path) {
                             Ok(checksum) => {
                                 if checksum != item.crc32() {
                                     eprintln!("CRC32 checksum do not match! Exiting...");
@@ -127,7 +126,7 @@ impl ZipFile {
                                 }
                             },
                             Err(err) => {
-                                eprintln!("I/O error occured while decrypting the file! {}", err);
+                                eprintln!("I/O error occured while calculating the checksum! {}", err);
                                 exit(-1);
                             }
                         }
