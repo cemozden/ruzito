@@ -77,7 +77,7 @@ impl CommandProcessor for ZipCommand {
             relative_path
         } else { PathBuf::new().join(given_dest_path) };
 
-        let encrypt_file = matches.is_present("encrypt");
+        let encrypt_file = matches.is_present("encrypt") || matches.is_present("password");
         let verbose_mode = matches.is_present("verbose");
 
         let encryption_method = if encrypt_file { EncryptionMethod::ZipCrypto } else { EncryptionMethod::NoEncryption };
