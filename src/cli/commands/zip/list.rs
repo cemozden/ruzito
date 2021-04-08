@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use clap::ArgMatches;
 use cli_table::{Cell, CellStruct, Table, format::Justify, print_stdout};
 
-use crate::{cli::CommandProcessor, zip::{ZipFile, mem_map::EncryptionMethod}};
+use crate::{cli::CommandProcessor, zip::{ZipFile, mem_map::{EncryptionMethod, CompressionMethod}}};
 
 pub struct ListCommand;
 
@@ -48,11 +48,11 @@ impl CommandProcessor for ListCommand {
 
         let list_table = zip_file.iter()
             .map(|item| {
-                let compression_perc = if item.uncompressed_size() > 0 {
+                let compression_perc = if item.uncompressed_size() > 0 && item.compression_method() != CompressionMethod::NoCompression {
                     let compressed_size = item.compressed_size() as f32;
                     let uncompressed_size = item.uncompressed_size() as f32;
                     let perc = ((compressed_size / uncompressed_size) * 100.0) as f32;
-                    format!("({:.1}%)", perc)
+                    format!("({:.1}%)", 100 as f32 - perc)
                 }
                 else { String::from("") };
                 let file_protected = if item.encryption_method() == EncryptionMethod::NoEncryption {
