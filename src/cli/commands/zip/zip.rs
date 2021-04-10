@@ -77,6 +77,14 @@ impl CommandProcessor for ZipCommand {
             relative_path
         } else { PathBuf::new().join(given_dest_path) };
 
+        let dest_path = if dest_path.is_dir() {
+            let mut file_name = OsString::from(zip_path.file_name().unwrap());
+            file_name.push(".zip");
+            dest_path.join(file_name) //Unwrap safe here. We check the error probabilities above.
+        } else {
+            dest_path
+        };
+
         let encrypt_file = matches.is_present("encrypt") || matches.is_present("password");
         let verbose_mode = matches.is_present("verbose");
 

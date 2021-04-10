@@ -72,6 +72,10 @@ impl CommandProcessor for ExtractCommand {
             })
         };
 
+        if destination_path.is_file() {
+            eprintln!("Destination path of the extracted files cannot be a file path!");
+            return;
+        }
 
         let zip_password = matches.value_of("password")
             .map(|pass_str| String::from(pass_str));

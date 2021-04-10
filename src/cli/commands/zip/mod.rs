@@ -28,6 +28,7 @@ impl ZipSubCommand {
 impl RuzitoSubCommand for ZipSubCommand {
     fn clap_definition<'a, 'b>(&self) -> clap::App<'a, 'b> {
         SubCommand::with_name(self.name())
+            .about("Commands for zipping/extracting ZIP files.")
             .arg(Arg::with_name("extract")
                     .short("x")
                     .long("extract") 
