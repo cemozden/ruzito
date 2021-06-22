@@ -20,7 +20,7 @@ fn main() {
     let commands = SubCommandModule::new();
 
     let matches = App::new("ruzito")
-        .version("1.0.0")
+        .version("1.0.1")
         .author("Cem Ozden <cemozden93@outlook.com>")
         .about("Simple Archive Extraction Tool")
         .settings(&[AppSettings::ArgRequiredElseHelp, AppSettings::ArgsNegateSubcommands, AppSettings::SubcommandRequiredElseHelp])
