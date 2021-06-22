@@ -1,4 +1,4 @@
-use std::{ffi::{OsStr, OsString}, fs::{Metadata, read_dir}, io::{Error, ErrorKind}, os::windows::prelude::MetadataExt, path::PathBuf, time::SystemTime};
+use std::{ffi::{OsStr, OsString}, fs::{Metadata, read_dir}, io::{Error, ErrorKind}, path::PathBuf, time::SystemTime};
 
 use chrono::{DateTime, Datelike, Local, Timelike};
 
@@ -71,7 +71,7 @@ impl<'a> ZipItemCreator<'a> {
             };
             let file_metadata = std::fs::metadata(path).map_err(|err| ZipCreatorError::IOError(err))?;
 
-            let file_size = file_metadata.file_size();
+            let file_size = file_metadata.len();
             let compression_method = if file_size > MIN_SIZE_TO_COMPRESS {
                 CompressionMethod::Deflate
             }

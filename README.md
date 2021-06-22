@@ -3,7 +3,6 @@
 
 *ruzito* is a CLI tool to manage archive files which is written in Rust. Currently, ruzito supports only **ZIP** format but ***RAR*** and ***7z*** formats are on the way. 
 
-*ruzito is available only on Windows platform for now.* Linux and MacOS support will be included. 
 ### ZIP features
 * ruzito is able to zip, extract as well as list the files with high speed compression/decompression features.
 * ZipCrypto support. (Strong encryption and WinZip AES-256 implementations are on the way.)
