@@ -1,6 +1,6 @@
 [package]
 name = "ruzito"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Cem Özden <cemozden.tr@gmail.com>"]
 
 [dependencies]
